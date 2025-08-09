@@ -4,6 +4,10 @@
 <dict>
 	<key>NSCalendarsUsageDescription</key>
 	<string>EventAI needs access to your calendar to add events created from text.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>EventAI uses your location to automatically detect your timezone and provide location context for events.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>EventAI needs access to your camera to take photos of schedules and documents that can be converted to calendar events.</string>
 	<key>CFBundleDisplayName</key>
 	<string>EventAI</string>
 	<key>CFBundleIdentifier</key>
@@ -12,5 +16,9 @@
 	<string>1</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
+	<key>API_BASE_URL</key>
+	<string>$(API_BASE_URL)</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-5748015623915247~8933971607</string>
 </dict>
 </plist>
