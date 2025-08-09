@@ -180,18 +180,16 @@ class CalendarService: ObservableObject {
                 } else if trimmedLine.hasPrefix("DTSTART") {
                     let dateString = extractDateFromICSLine(trimmedLine, prefix: "DTSTART")
                     let timezone = extractTimezoneFromICSLine(trimmedLine) ?? currentTimezone ?? userTimezone
+                    
                     event.startDate = parseICSDate(dateString, timezone: timezone) ?? Date()
-                    event.timeZone = timezone
-                    print("⏰ Start: \(dateString) -> \(event.startDate) (TZ: \(timezone.identifier))")
+                    event.timeZone = userTimezone // Always set to user's timezone for display
+                    print("⏰ Start: \(dateString) -> \(event.startDate) (Event TZ: \(userTimezone.identifier))")
                 } else if trimmedLine.hasPrefix("DTEND") {
                     let dateString = extractDateFromICSLine(trimmedLine, prefix: "DTEND")
                     let timezone = extractTimezoneFromICSLine(trimmedLine) ?? currentTimezone ?? userTimezone
+                    
                     event.endDate = parseICSDate(dateString, timezone: timezone) ?? Date().addingTimeInterval(3600)
-                    // Use the same timezone as start date for consistency
-                    if event.timeZone == nil {
-                        event.timeZone = timezone
-                    }
-                    print("⏰ End: \(dateString) -> \(event.endDate) (TZ: \(timezone.identifier))")
+                    print("⏰ End: \(dateString) -> \(event.endDate) (Event TZ: \(userTimezone.identifier))")
                 }
             }
         }
@@ -223,28 +221,41 @@ class CalendarService: ObservableObject {
     private func parseICSDate(_ dateString: String, timezone: TimeZone?) -> Date? {
         let cleanDateString = dateString.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Create multiple formatters for different ICS date formats
+        // Handle UTC dates (ending with Z) specially
+        if cleanDateString.hasSuffix("Z") {
+            let formatters: [(DateFormatter, String)] = [
+                (createICSFormatter("yyyyMMdd'T'HHmmss'Z'", timeZone: TimeZone(identifier: "UTC")), "UTC Z"),
+                (createICSFormatter("yyyy-MM-dd'T'HH:mm:ss'Z'", timeZone: TimeZone(identifier: "UTC")), "ISO UTC")
+            ]
+            
+            for (formatter, description) in formatters {
+                if let utcDate = formatter.date(from: cleanDateString) {
+                    print("✅ Parsed UTC date '\(cleanDateString)' using \(description) -> \(utcDate)")
+                    // Return UTC date as-is - EKEvent will handle timezone display
+                    return utcDate
+                }
+            }
+        }
+        
+        // Handle local time dates with timezone
         let formatters: [(DateFormatter, String)] = [
-            // UTC format: 20241010T140000Z
-            (createICSFormatter("yyyyMMdd'T'HHmmss'Z'", timeZone: TimeZone(identifier: "UTC")), "UTC Z"),
             // Local time with timezone: 20241010T140000
             (createICSFormatter("yyyyMMdd'T'HHmmss", timeZone: timezone), "Local with TZ"),
             // Date only: 20241010
             (createICSFormatter("yyyyMMdd", timeZone: timezone), "Date only"),
             // ISO 8601 variants
-            (createICSFormatter("yyyy-MM-dd'T'HH:mm:ss'Z'", timeZone: TimeZone(identifier: "UTC")), "ISO UTC"),
             (createICSFormatter("yyyy-MM-dd'T'HH:mm:ss", timeZone: timezone), "ISO Local"),
             (createICSFormatter("yyyy-MM-dd HH:mm:ss", timeZone: timezone), "ISO Space"),
         ]
         
         for (formatter, description) in formatters {
             if let date = formatter.date(from: cleanDateString) {
-                print("✅ Parsed '\(cleanDateString)' using \(description) -> \(date)")
+                print("✅ Parsed local date '\(cleanDateString)' using \(description) -> \(date) in timezone \(timezone?.identifier ?? "current")")
                 return date
             }
         }
         
-        // If all formatters fail, try ISO8601DateFormatter as fallback
+        // Last resort: ISO8601DateFormatter
         let isoFormatter = ISO8601DateFormatter()
         if let date = isoFormatter.date(from: cleanDateString) {
             print("✅ Parsed '\(cleanDateString)' using ISO8601DateFormatter -> \(date)")
@@ -262,6 +273,7 @@ class CalendarService: ObservableObject {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
     }
+    
 }
 
 class EventData {

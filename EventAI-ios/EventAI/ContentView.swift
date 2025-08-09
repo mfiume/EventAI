@@ -905,23 +905,34 @@ struct EventPreviewView: View {
         showingCelebration = true
         confettiTrigger += 1
         
-        // Animate the checkmark
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.3)) {
-            celebrationScale = 1.2
-        }
+        // Start with initial state
+        celebrationScale = 0.1
+        celebrationRotation = 0
+        celebrationOpacity = 0
         
-        withAnimation(.easeInOut(duration: 1.0)) {
-            celebrationRotation = 360
+        // Animate in sequence for smooth flow
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+            celebrationScale = 1.0
             celebrationOpacity = 1.0
         }
         
-        // Auto-dismiss after animation
+        // Add rotation after initial scale
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation(.easeInOut(duration: 0.8)) {
+                celebrationRotation = 360
+            }
+        }
+        
+        // Auto-dismiss with better timing
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            withAnimation(.easeOut(duration: 0.5)) {
+            withAnimation(.easeOut(duration: 0.4)) {
                 celebrationOpacity = 0
+                celebrationScale = 0.8
             }
             
+            // Ensure clean dismissal
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                showingCelebration = false
                 onEventsAdded(selectedEvents.count)
                 presentationMode.wrappedValue.dismiss()
             }
