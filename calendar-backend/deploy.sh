@@ -15,7 +15,7 @@ export $(grep -v '^#' secrets/secrets.env | xargs)
 
 # Set project ID
 PROJECT_ID="levelup-467902"
-SERVICE_NAME="eventai-api"
+SERVICE_NAME="event-ai-api"
 REGION="us-central1"
 
 # Set the project

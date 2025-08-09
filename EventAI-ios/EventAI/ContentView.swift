@@ -16,23 +16,32 @@ struct ContentView: View {
     @State private var selectedImage: UIImage?
     @State private var showingImagePicker = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var showingPremiumModal = false
     @FocusState private var isTextFieldFocused: Bool
     @StateObject private var apiService = APIService()
     @StateObject private var calendarService = CalendarService()
     @StateObject private var adService = AdService()
     @StateObject private var locationService = LocationService()
+    @StateObject private var subscriptionService = SubscriptionService()
     
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
+                // Usage indicator for free users
+                if !subscriptionService.isPremium {
+                    UsageIndicatorView(subscriptionService: subscriptionService, showingPremiumModal: $showingPremiumModal)
+                }
+                
                 inputSection
                 
                 Spacer()
                 
-                if showAdBanner && adService.isAdLoaded {
+                // AdMob banner for free users
+                if !subscriptionService.isPremium && adService.isAdLoaded {
                     adService.loadBannerAd()
                         .frame(height: 60)
                         .cornerRadius(8)
+                        .padding(.horizontal, -16) // Extend to screen edges
                 }
             }
             .padding()
@@ -52,6 +61,7 @@ struct ContentView: View {
                     events: currentEvents,
                     icsContent: currentICSContent,
                     calendarService: calendarService,
+                    subscriptionService: subscriptionService,
                     onEventsAdded: { addedCount in
                         // Clear input and show success state
                         clearAll()
@@ -61,6 +71,10 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingImagePicker) {
                 ImagePicker(image: $selectedImage, sourceType: imageSourceType)
+            }
+            .fullScreenCover(isPresented: $showingPremiumModal) {
+                Text("Premium Modal - Coming Soon")
+                    .padding()
             }
         }
         .onAppear {
@@ -190,7 +204,7 @@ struct ContentView: View {
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                 
                 if inputText.isEmpty && selectedImage == nil && !isTextFieldFocused {
-                    Text("Transform text and images into calendar events...")
+                    Text("Use AI to create calendar events from text and images")
                         .foregroundColor(.gray.opacity(0.6))
                         .font(.body)
                         .padding(.horizontal, 16)
@@ -314,6 +328,31 @@ struct ContentView: View {
         
         isLoading = true
         
+        // Check if user is premium
+        let isPremium = subscriptionService.isPremium
+        
+        if !isPremium {
+            // Show AdMob interstitial for free users
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let rootViewController = window.rootViewController {
+                adService.showInterstitialAd(from: rootViewController) {
+                    // Continue with event generation after ad is shown
+                    self.performEventGeneration()
+                }
+            } else {
+                // Fallback if can't get view controller - just proceed
+                performEventGeneration()
+            }
+            return
+        }
+        
+        // Premium users skip the ad
+        performEventGeneration()
+    }
+    
+    private func performEventGeneration() {
+        
         Task {
             do {
                 // Determine effective timezone and location
@@ -383,203 +422,17 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Timezone Picker View
-struct TimezonePickerView: View {
-    @Binding var selectedTimezone: TimeZone
-    @Environment(\.presentationMode) var presentationMode
-    @State private var searchText = ""
-    
-    var body: some View {
-        VStack {
-            SearchBar(text: $searchText)
-            
-            List(filteredTimezones, id: \.identifier) { timezone in
-                TimezoneRow(
-                    timezone: timezone,
-                    isSelected: timezone.identifier == selectedTimezone.identifier
-                ) {
-                    selectedTimezone = timezone
-                    presentationMode.wrappedValue.dismiss()
-                }
-            }
-        }
-        .navigationTitle("Select Timezone")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-    
-    private var filteredTimezones: [TimeZone] {
-        let allTimezones = TimeZone.knownTimeZoneIdentifiers
-            .compactMap { TimeZone(identifier: $0) }
-            .sorted { timezone1, timezone2 in
-                let name1 = timezone1.localizedName(for: .standard, locale: .current) ?? timezone1.identifier
-                let name2 = timezone2.localizedName(for: .standard, locale: .current) ?? timezone2.identifier
-                return name1 < name2
-            }
-        
-        if searchText.isEmpty {
-            return allTimezones
-        } else {
-            return allTimezones.filter { timezone in
-                let name = timezone.localizedName(for: .standard, locale: .current) ?? timezone.identifier
-                let identifier = timezone.identifier
-                return name.localizedCaseInsensitiveContains(searchText) || 
-                       identifier.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-    }
-}
-
-struct TimezoneRow: View {
-    let timezone: TimeZone
-    let isSelected: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(timezone.localizedName(for: .standard, locale: .current) ?? timezone.identifier)
-                    .font(.body)
-                Text(timezone.identifier)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .foregroundColor(.blue)
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onTap()
-        }
-    }
-}
-
-struct SearchBar: View {
-    @Binding var text: String
-    
-    var body: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
-            
-            TextField("Search timezones...", text: $text)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            
-            if !text.isEmpty {
-                Button("Clear") {
-                    text = ""
-                }
-                .foregroundColor(.blue)
-            }
-        }
-        .padding(.horizontal)
-    }
-}
+// MARK: - Timezone picker now in separate file
 
 // MARK: - Location Service
 @MainActor
-class LocationService: NSObject, ObservableObject {
-    @Published var isLocationEnabled: Bool = false
-    @Published var currentLocation: CLLocation?
-    @Published var locationString: String?
-    @Published var inferredTimezone: TimeZone?
-    
-    private let locationManager = CLLocationManager()
-    private let geocoder = CLGeocoder()
-    
-    override init() {
-        super.init()
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        
-        // Check current authorization status
-        updateLocationStatus()
-    }
-    
-    func requestLocationPermission() {
-        locationManager.requestWhenInUseAuthorization()
-    }
-    
-    func getCurrentLocation() {
-        guard locationManager.authorizationStatus == .authorizedWhenInUse ||
-              locationManager.authorizationStatus == .authorizedAlways else {
-            requestLocationPermission()
-            return
-        }
-        
-        locationManager.requestLocation()
-    }
-    
-    private func updateLocationStatus() {
-        let status = locationManager.authorizationStatus
-        isLocationEnabled = status == .authorizedWhenInUse || status == .authorizedAlways
-        
-        if isLocationEnabled {
-            getCurrentLocation()
-        }
-    }
-    
-    private func reverseGeocode(_ location: CLLocation) {
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            guard let self = self,
-                  let placemark = placemarks?.first,
-                  error == nil else {
-                print("Geocoding error: \(error?.localizedDescription ?? "Unknown error")")
-                return
-            }
-            
-            Task { @MainActor in
-                // Create location string from placemark
-                var locationComponents: [String] = []
-                
-                if let locality = placemark.locality {
-                    locationComponents.append(locality)
-                }
-                if let administrativeArea = placemark.administrativeArea {
-                    locationComponents.append(administrativeArea)
-                }
-                if let country = placemark.country {
-                    locationComponents.append(country)
-                }
-                
-                self.locationString = locationComponents.joined(separator: ", ")
-                
-                // Infer timezone from the location
-                self.inferredTimezone = placemark.timeZone
-                
-                print("📍 Location: \(self.locationString ?? "Unknown")")
-                print("⏰ Inferred timezone: \(self.inferredTimezone?.identifier ?? "Unknown")")
-            }
-        }
-    }
-}
-
-extension LocationService: CLLocationManagerDelegate {
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        
-        currentLocation = location
-        reverseGeocode(location)
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location error: \(error.localizedDescription)")
-    }
-    
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        updateLocationStatus()
-    }
-}
 
 // MARK: - Event Preview View
 struct EventPreviewView: View {
     let events: [ParsedEvent]
     let icsContent: String
     let calendarService: CalendarService
+    @ObservedObject var subscriptionService: SubscriptionService
     let onEventsAdded: (Int) -> Void
     
     @Environment(\.presentationMode) var presentationMode
@@ -593,10 +446,11 @@ struct EventPreviewView: View {
     @State private var confettiTrigger: Int = 0
     @State private var showingShareSheet = false
     
-    init(events: [ParsedEvent], icsContent: String, calendarService: CalendarService, onEventsAdded: @escaping (Int) -> Void) {
+    init(events: [ParsedEvent], icsContent: String, calendarService: CalendarService, subscriptionService: SubscriptionService, onEventsAdded: @escaping (Int) -> Void) {
         self.events = events
         self.icsContent = icsContent
         self.calendarService = calendarService
+        self.subscriptionService = subscriptionService
         self.onEventsAdded = onEventsAdded
         // Select all events by default
         _selectedEvents = State(initialValue: Set(events.map { $0.id }))
@@ -687,12 +541,20 @@ struct EventPreviewView: View {
                             .padding(.bottom, 8)
                         }
                         
-                        ForEach(events) { event in
+                        // Events with interspersed ads for free users
+                        ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
                             EventCard(
                                 event: event,
                                 isSelected: selectedEvents.contains(event.id)
                             ) {
                                 toggleEventSelection(event.id)
+                            }
+                            
+                            // Add banner ad every 3 events for free users
+                            if !subscriptionService.isPremium && (index + 1) % 3 == 0 && index < events.count - 1 {
+                                BannerAdView()
+                                    .frame(height: 60)
+                                    .padding(.vertical, 8)
                             }
                         }
                         
@@ -1306,6 +1168,105 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
     
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Full Screen Ad View
+
+// MARK: - Usage Indicator View
+struct UsageIndicatorView: View {
+    @ObservedObject var subscriptionService: SubscriptionService
+    @Binding var showingPremiumModal: Bool
+    @State private var usageStats: UsageStats?
+    
+    var body: some View {
+        HStack {
+            Text("Daily conversions")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            if let stats = usageStats {
+                Text("\(stats.remaining) of \(stats.limit) remaining")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(stats.remaining <= 1 ? .red : .primary)
+            } else {
+                Text("Loading...")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Button("Upgrade") {
+                showingPremiumModal = true
+            }
+            .font(.caption)
+            .foregroundColor(.blue)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color.blue.opacity(0.05))
+        .cornerRadius(8)
+        .onAppear {
+            loadUsageStats()
+        }
+    }
+    
+    private func loadUsageStats() {
+        // TODO: Load usage stats from API
+        // For now, simulate with local data
+        usageStats = UsageStats(count: 1, limit: 3, remaining: 2, isPremium: false)
+    }
+}
+
+struct UsageStats {
+    let count: Int
+    let limit: Int
+    let remaining: Int
+    let isPremium: Bool
+}
+
+// MARK: - Banner Ad View
+struct BannerAdView: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Image(systemName: "crown.fill")
+                    .foregroundColor(.yellow)
+                    .font(.caption)
+                
+                Text("Upgrade to Premium")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text("Ad-free experience")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Text("Remove ads and get unlimited conversions")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            LinearGradient(
+                colors: [Color.yellow.opacity(0.1), Color.blue.opacity(0.05)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+        )
+        .cornerRadius(8)
+    }
 }
 
 #Preview {

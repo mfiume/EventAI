@@ -92,11 +92,6 @@ struct ParsedEvent: Codable, Identifiable {
     }
 }
 
-struct TextToCalendarRequest: Codable {
-    let text: String
-    let timezone: String
-    let userLocation: String?
-}
 
 @MainActor
 class APIService: ObservableObject {
@@ -110,89 +105,11 @@ class APIService: ObservableObject {
     }
     
     func convertTextToCalendar(text: String, timezone: String = "America/New_York", userLocation: String? = nil, image: UIImage? = nil) async throws -> CalendarEventResponse {
-        if let image = image {
-            return try await convertTextAndImageToCalendar(text: text, timezone: timezone, userLocation: userLocation, image: image)
-        } else {
-            return try await convertTextOnlyToCalendar(text: text, timezone: timezone, userLocation: userLocation)
-        }
-    }
-    
-    private func convertTextOnlyToCalendar(text: String, timezone: String, userLocation: String?) async throws -> CalendarEventResponse {
         let fullURL = "\(baseURL)/convert"
         print("🔗 Making API call to: \(fullURL)")
-        
-        guard let url = URL(string: fullURL) else {
-            print("❌ Invalid URL: \(fullURL)")
-            throw APIError.invalidURL
+        if image != nil {
+            print("🖼️ Including image attachment")
         }
-        
-        let request = TextToCalendarRequest(text: text, timezone: timezone, userLocation: userLocation)
-        
-        // DEBUG: Print request being sent
-        print("🔍 DEBUG - REQUEST TO BACKEND:")
-        print(String(repeating: "=", count: 80))
-        print("Text: \(request.text)")
-        print("Timezone: \(request.timezone)")
-        print("User Location: \(request.userLocation ?? "nil")")
-        print(String(repeating: "=", count: 80))
-        
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        do {
-            urlRequest.httpBody = try JSONEncoder().encode(request)
-        } catch {
-            throw APIError.encodingError
-        }
-        
-        do {
-            let (data, response) = try await session.data(for: urlRequest)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw APIError.invalidResponse
-            }
-            
-            guard httpResponse.statusCode == 200 else {
-                throw APIError.serverError(httpResponse.statusCode)
-            }
-            
-            let calendarResponse = try JSONDecoder().decode(CalendarEventResponse.self, from: data)
-            
-            // DEBUG: Print response from backend
-            print("🤖 DEBUG - RESPONSE FROM BACKEND:")
-            print(String(repeating: "=", count: 80))
-            print("Events Found: \(calendarResponse.eventsFound)")
-            print("Message: \(calendarResponse.message)")
-            if let events = calendarResponse.events {
-                print("Events:")
-                for (index, event) in events.enumerated() {
-                    print("  [\(index + 1)] \(event.title)")
-                    print("      Start: \(event.startDate)")
-                    print("      End: \(event.endDate ?? "nil")")
-                    print("      Location: \(event.location ?? "nil")")
-                    print("      Recurring: \(event.isRecurring)")
-                    print("      Pattern: \(event.recurrencePattern ?? "nil")")
-                    print("      Timezone: \(event.timezone ?? "nil")")
-                }
-            }
-            print("ICS Content Length: \(calendarResponse.icsContent.count) characters")
-            print(String(repeating: "=", count: 80))
-            
-            return calendarResponse
-            
-        } catch let error as APIError {
-            throw error
-        } catch {
-            throw APIError.networkError(error)
-        }
-    }
-    
-    private func convertTextAndImageToCalendar(text: String, timezone: String, userLocation: String?, image: UIImage) async throws -> CalendarEventResponse {
-        // Use direct Cloud Run URL for image processing (custom domain doesn't have this endpoint yet)
-        let fullURL = "https://eventai-api-661796696046.us-central1.run.app/api/convert-with-image"
-        print("🔗 Making API call to: \(fullURL)")
-        print("🖼️ Including image attachment")
         
         guard let url = URL(string: fullURL) else {
             print("❌ Invalid URL: \(fullURL)")
@@ -205,10 +122,12 @@ class APIService: ObservableObject {
         print("Text: \(text)")
         print("Timezone: \(timezone)")
         print("User Location: \(userLocation ?? "nil")")
-        print("Image: Attached (\(image.size.width)x\(image.size.height))")
+        if let image = image {
+            print("Image: Attached (\(image.size.width)x\(image.size.height))")
+        }
         print(String(repeating: "=", count: 80))
         
-        // Create multipart form data
+        // Always use multipart form data for consistency (works with or without image)
         let boundary = "Boundary-\(UUID().uuidString)"
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
@@ -233,8 +152,8 @@ class APIService: ObservableObject {
             formData.append("\(userLocation)\r\n".data(using: .utf8)!)
         }
         
-        // Add image field
-        if let imageData = image.jpegData(compressionQuality: 0.8) {
+        // Add image field if present
+        if let image = image, let imageData = image.jpegData(compressionQuality: 0.8) {
             formData.append("--\(boundary)\r\n".data(using: .utf8)!)
             formData.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\r\n".data(using: .utf8)!)
             formData.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)

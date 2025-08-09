@@ -22,12 +22,7 @@ struct TimezonePickerView: View {
                 .listStyle(PlainListStyle())
                 .edgesIgnoringSafeArea(.horizontal)
             }
-            .navigationTitle("Select Timezone")
-            .navigationBarItems(
-                trailing: Button("Done") {
-                    presentationMode.wrappedValue.dismiss()
-                }
-            )
+            .navigationTitle("Timezone")
         }
     }
     
@@ -73,6 +68,10 @@ struct TimezoneRow: View {
             Text(gmtOffsetString)
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(4)
                 .padding(.trailing, 8)
             
             if isSelected {

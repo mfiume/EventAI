@@ -51,16 +51,24 @@ EventAI is an iOS app that converts natural language text into calendar events u
 
 2. Set up secrets:
    ```bash
-   cp secrets/Config.example.xcconfig secrets/Config.xcconfig
-   # Edit secrets/Config.xcconfig with your API endpoints and AdMob IDs
+   ./setup_config.sh
+   # This will create secrets/Config.xcconfig from the template
+   # Edit secrets/Config.xcconfig with your AdMob IDs if needed
    ```
 
-3. Open in Xcode:
+3. Configure Xcode project:
+   - Open EventAI.xcodeproj in Xcode
+   - Go to Project Settings → Build Settings  
+   - Set "Based on Configuration File" to `secrets/Config.xcconfig`
+
+4. Open in Xcode:
    ```bash
    open EventAI.xcodeproj
    ```
 
-4. Build and run on your device or simulator
+5. Build and run on your device or simulator
+
+**The app is now configured to use the production EventAI API at `https://eventai.leveluplife.app/api/`**
 
 ## Usage Examples
 
@@ -82,8 +90,8 @@ EventAI can parse various types of natural language input:
 ### iOS Configuration
 
 Edit `secrets/Config.xcconfig` with:
-- `API_BASE_URL`: Your backend API endpoint
-- `ADMOB_APP_ID`: Your Google AdMob App ID
+- `API_BASE_URL`: Set to `https://eventai.leveluplife.app/api` (already configured)
+- `ADMOB_APP_ID`: Your Google AdMob App ID  
 - `BANNER_AD_UNIT_ID`: Your AdMob Banner Ad Unit ID
 
 ## Security
@@ -92,9 +100,18 @@ Edit `secrets/Config.xcconfig` with:
 - **Secure random key generation**: Use `openssl rand -hex 32` for secrets
 - **Calendar permissions**: Requests proper iOS calendar access permissions
 
-## Domain Setup
+## Current Status
 
-The app is configured to use the custom domain `eventai.leveluplife.app` which should be mapped to your Google Cloud Run service.
+✅ **Backend**: Deployed and running on Google Cloud Run  
+✅ **Load Balancer**: Professional Google Cloud Load Balancer with SSL  
+✅ **Domain**: https://eventai.leveluplife.app fully operational  
+✅ **iOS App**: Configured to use production API at https://eventai.leveluplife.app/api  
+
+## Live URLs
+
+- **Production API**: https://eventai.leveluplife.app/api ✅ **LIVE**
+- **Health Check**: https://eventai.leveluplife.app/api/health ✅ **LIVE**
+- **API Docs**: https://eventai.leveluplife.app/docs ✅ **LIVE**
 
 ## License
 

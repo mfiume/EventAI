@@ -14,6 +14,9 @@
 		1A234567890A0010 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A000F /* APIService.swift */; };
 		1A234567890A0012 /* CalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0011 /* CalendarService.swift */; };
 		1A234567890A0014 /* AdService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0013 /* AdService.swift */; };
+		1A234567890A0016 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0015 /* LocationService.swift */; };
+		1A234567890A0018 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0017 /* SubscriptionService.swift */; };
+		1A234567890A001A /* TimezonePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0019 /* TimezonePickerView.swift */; };
 		4ECC44D92E46FF3C008B84CC /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4ECC44D82E46FF3C008B84CC /* GoogleMobileAds */; };
 /* End PBXBuildFile section */
 
@@ -25,7 +28,10 @@
 		1A234567890A000F /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		1A234567890A0011 /* CalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarService.swift; sourceTree = "<group>"; };
 		1A234567890A0013 /* AdService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdService.swift; sourceTree = "<group>"; };
-		1A234567890A0015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1A234567890A0015 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		1A234567890A0017 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
+		1A234567890A0019 /* TimezonePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimezonePickerView.swift; sourceTree = "<group>"; };
+		1A234567890A001B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1A234567890AFFFD /* EventAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EventAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -55,6 +61,8 @@
 				1A234567890A000F /* APIService.swift */,
 				1A234567890A0011 /* CalendarService.swift */,
 				1A234567890A0013 /* AdService.swift */,
+				1A234567890A0015 /* LocationService.swift */,
+				1A234567890A0017 /* SubscriptionService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -75,14 +83,23 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		1A234567890A001C /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				1A234567890A0019 /* TimezonePickerView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
 		1A234567890AFFFF /* EventAI */ = {
 			isa = PBXGroup;
 			children = (
 				1A234567890A0000 /* EventAIApp.swift */,
 				1A234567890A0002 /* ContentView.swift */,
 				1A234567890A000E /* Services */,
+				1A234567890A001C /* Views */,
 				1A234567890A0004 /* Assets.xcassets */,
-				1A234567890A0015 /* Info.plist */,
+				1A234567890A001B /* Info.plist */,
 				1A234567890A0006 /* Preview Content */,
 			);
 			path = EventAI;
@@ -165,6 +182,9 @@
 				1A234567890A0010 /* APIService.swift in Sources */,
 				1A234567890A0012 /* CalendarService.swift in Sources */,
 				1A234567890A0014 /* AdService.swift in Sources */,
+				1A234567890A0016 /* LocationService.swift in Sources */,
+				1A234567890A0018 /* SubscriptionService.swift in Sources */,
+				1A234567890A001A /* TimezonePickerView.swift in Sources */,
 				1A234567890A0001 /* EventAIApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
