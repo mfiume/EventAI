@@ -8,6 +8,22 @@ struct CalendarEventResponse: Codable {
     let events: [ParsedEvent]?
 }
 
+struct UsageResponse: Codable {
+    let count: Int
+    let limit: Int
+    let remaining: Int
+    let isPremium: Bool
+    let resetDate: String
+    let canConvert: Bool
+    
+    enum CodingKeys: String, CodingKey {
+        case count, limit, remaining
+        case isPremium = "is_premium"
+        case resetDate = "reset_date"
+        case canConvert = "can_convert"
+    }
+}
+
 struct ParsedEvent: Codable, Identifiable {
     let id = UUID()
     let title: String
@@ -99,9 +115,43 @@ class APIService: ObservableObject {
     private let session = URLSession.shared
     
     init() {
-        // Use production EventAI API
+        // Use production EventAI API (deployed to eventai-api service)
         self.baseURL = "https://eventai.leveluplife.app/api"
         print("🚀 EventAI API configured: \(baseURL)")
+    }
+    
+    func getUsageStats() async throws -> UsageResponse {
+        let fullURL = "\(baseURL)/usage"
+        print("📊 Getting usage stats from: \(fullURL)")
+        
+        guard let url = URL(string: fullURL) else {
+            throw APIError.invalidURL
+        }
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "GET"
+        
+        do {
+            let (data, response) = try await session.data(for: urlRequest)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.invalidResponse
+            }
+            
+            guard httpResponse.statusCode == 200 else {
+                throw APIError.serverError(httpResponse.statusCode)
+            }
+            
+            let usageResponse = try JSONDecoder().decode(UsageResponse.self, from: data)
+            
+            print("📊 Usage stats: \(usageResponse.remaining) of \(usageResponse.limit) remaining")
+            return usageResponse
+            
+        } catch let error as APIError {
+            throw error
+        } catch {
+            throw APIError.networkError(error)
+        }
     }
     
     func convertTextToCalendar(text: String, timezone: String = "America/New_York", userLocation: String? = nil, image: UIImage? = nil) async throws -> CalendarEventResponse {

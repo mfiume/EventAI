@@ -24,12 +24,13 @@ struct AdBannerView: UIViewRepresentable {
     }
 }
 
-class AdService: ObservableObject {
+class AdService: NSObject, ObservableObject {
     @Published var isAdLoaded = false
     @Published var isAdMobInitialized = false
     @Published var isInterstitialLoaded = false
     
     private var interstitialAd: InterstitialAd?
+    private var adCompletionHandler: (() -> Void)?
     
     // AdMob ad unit IDs - Your real production IDs
     static let bannerAdUnitID = "ca-app-pub-5748015623915247/9049521670" // Your banner ad unit ID
@@ -66,6 +67,7 @@ class AdService: ObservableObject {
                 }
                 
                 self?.interstitialAd = ad
+                self?.interstitialAd?.fullScreenContentDelegate = self
                 self?.isInterstitialLoaded = true
                 print("✅ Interstitial ad loaded successfully")
             }
@@ -80,16 +82,37 @@ class AdService: ObservableObject {
         }
         
         print("📺 Showing interstitial ad...")
+        
+        // Store completion handler to call when ad is actually dismissed
+        self.adCompletionHandler = completion
+        
+        // Present the ad - completion will be called by delegate methods
         interstitialAd.present(from: viewController)
         
         // Reset the ad and load a new one for next time
         self.interstitialAd = nil
         self.isInterstitialLoaded = false
         loadInterstitialAd()
-        
-        // Call completion after a short delay to allow ad to be shown
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            completion()
-        }
+    }
+}
+
+// MARK: - FullScreenContentDelegate
+extension AdService: FullScreenContentDelegate {
+    func adWillPresentFullScreenContent(_ ad: FullScreenPresentingAd) {
+        print("📺 Interstitial ad will present")
+    }
+    
+    func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+        print("❌ Interstitial ad failed to present: \(error.localizedDescription)")
+        // Call completion if ad fails to show
+        adCompletionHandler?()
+        adCompletionHandler = nil
+    }
+    
+    func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
+        print("✅ Interstitial ad dismissed by user")
+        // Call completion only when user actually dismisses the ad
+        adCompletionHandler?()
+        adCompletionHandler = nil
     }
 }

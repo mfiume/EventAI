@@ -13,6 +13,9 @@ struct ContentView: View {
     @State private var showEventPreview = false
     @State private var currentEvents: [ParsedEvent] = []
     @State private var currentICSContent = ""
+    @State private var dailyConversionsUsed = 0
+    @State private var dailyLimit = 3
+    @State private var canConvert = true
     @State private var selectedImage: UIImage?
     @State private var showingImagePicker = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
@@ -29,7 +32,7 @@ struct ContentView: View {
             VStack(spacing: 20) {
                 // Usage indicator for free users
                 if !subscriptionService.isPremium {
-                    UsageIndicatorView(subscriptionService: subscriptionService, showingPremiumModal: $showingPremiumModal)
+                    UsageIndicatorView(subscriptionService: subscriptionService, showingPremiumModal: $showingPremiumModal, dailyConversionsUsed: dailyConversionsUsed, dailyLimit: dailyLimit)
                 }
                 
                 inputSection
@@ -62,6 +65,7 @@ struct ContentView: View {
                     icsContent: currentICSContent,
                     calendarService: calendarService,
                     subscriptionService: subscriptionService,
+                    userTimezone: useLocationForTimezone && locationService.inferredTimezone != nil ? locationService.inferredTimezone! : selectedTimezone,
                     onEventsAdded: { addedCount in
                         // Clear input and show success state
                         clearAll()
@@ -73,13 +77,138 @@ struct ContentView: View {
                 ImagePicker(image: $selectedImage, sourceType: imageSourceType)
             }
             .fullScreenCover(isPresented: $showingPremiumModal) {
-                Text("Premium Modal - Coming Soon")
-                    .padding()
+                // Light-themed Premium Modal
+                GeometryReader { geometry in
+                    ZStack {
+                        // Light gradient background
+                        LinearGradient(
+                            colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .ignoresSafeArea(.all)
+                        
+                        // Light overlay
+                        Color.white.opacity(0.9)
+                            .ignoresSafeArea(.all)
+                        
+                        // Close button positioned absolutely at top-right
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Button(action: { showingPremiumModal = false }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 28))
+                                        .foregroundColor(.gray)
+                                        .background(Color.white)
+                                        .clipShape(Circle())
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                            
+                            Spacer()
+                        }
+                        
+                        // Main content
+                        VStack(spacing: 32) {
+                            Spacer()
+                                .frame(height: 100)
+                            
+                            Spacer()
+                            
+                            VStack(spacing: 24) {
+                                Text("Upgrade to Premium")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Image(systemName: "calendar.badge.plus")
+                                    .font(.system(size: 80))
+                                    .foregroundColor(.blue)
+                                
+                                Text("Get more conversions, remove ads, and add photos to provide context for your events.")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(4)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                
+                                VStack(spacing: 12) {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.green)
+                                        Text("More Conversions (20 Per Day)")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                    }
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.green)
+                                        Text("Photo Support")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                    }
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.green)
+                                        Text("Ad-Free")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            
+                            Spacer()
+                            
+                            VStack(spacing: 16) {
+                                Button(action: {
+                                    Task {
+                                        await subscriptionService.purchaseSubscription()
+                                        if subscriptionService.isPremium {
+                                            showingPremiumModal = false
+                                        }
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "crown.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.white)
+                                        Text("Upgrade to Premium")
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .foregroundColor(.white)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(.blue)
+                                    )
+                                }
+                                
+                                Text("$4.99/month • Cancel anytime")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 40)
+                        }
+                    }
+                }
             }
         }
         .onAppear {
             calendarService.requestCalendarAccess()
             adService.initializeAds()
+            Task {
+                await loadUsageFromBackend()
+            }
         }
     }
     
@@ -320,41 +449,80 @@ struct ContentView: View {
         isTextFieldFocused = false
     }
     
+    @MainActor
+    private func loadUsageFromBackend() async {
+        guard !subscriptionService.isPremium else { return }
+        
+        do {
+            let usageResponse = try await apiService.getUsageStats()
+            dailyConversionsUsed = usageResponse.count
+            dailyLimit = usageResponse.limit
+            canConvert = usageResponse.canConvert
+            print("📊 Usage loaded: \(usageResponse.remaining) of \(usageResponse.limit) remaining")
+        } catch {
+            print("❌ Failed to load usage: \(error)")
+            // Keep existing stats on error
+        }
+    }
+    
     private func generateCalendarEvents() {
+        Task {
+            await performGenerateCalendarEvents()
+        }
+    }
+    
+    private func performGenerateCalendarEvents() async {
         guard hasContent else { return }
         
         // Remove focus and dismiss keyboard when generating events
         isTextFieldFocused = false
         
-        isLoading = true
-        
-        // Check if user is premium
+        // Check usage limits for non-premium users
         let isPremium = subscriptionService.isPremium
+        if !isPremium {
+            // Refresh usage from backend first
+            await loadUsageFromBackend()
+            
+            // Check if user can convert
+            if !canConvert {
+                // Auto-open premium modal instead of showing alert
+                await MainActor.run {
+                    showingPremiumModal = true
+                }
+                return
+            }
+        }
+        
+        await MainActor.run {
+            isLoading = true
+        }
         
         if !isPremium {
             // Show AdMob interstitial for free users
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let window = windowScene.windows.first,
-               let rootViewController = window.rootViewController {
-                adService.showInterstitialAd(from: rootViewController) {
-                    // Continue with event generation after ad is shown
-                    self.performEventGeneration()
+            await MainActor.run {
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootViewController = window.rootViewController {
+                    adService.showInterstitialAd(from: rootViewController) {
+                        Task {
+                            await self.performEventGeneration()
+                        }
+                    }
+                } else {
+                    Task {
+                        await self.performEventGeneration()
+                    }
                 }
-            } else {
-                // Fallback if can't get view controller - just proceed
-                performEventGeneration()
             }
             return
         }
         
         // Premium users skip the ad
-        performEventGeneration()
+        await performEventGeneration()
     }
     
-    private func performEventGeneration() {
-        
-        Task {
-            do {
+    private func performEventGeneration() async {
+        do {
                 // Determine effective timezone and location
                 let effectiveTimezone = useLocationForTimezone && locationService.inferredTimezone != nil 
                     ? locationService.inferredTimezone! 
@@ -387,17 +555,29 @@ struct ContentView: View {
                         currentEvents = response.events ?? []
                         currentICSContent = response.icsContent
                         showEventPreview = true
+                        
+                        // Refresh usage stats after successful conversion
+                        if !subscriptionService.isPremium {
+                            Task {
+                                await loadUsageFromBackend()
+                            }
+                        }
                     } else {
-                        alertMessage = response.message
-                        showAlert = true
+                        // Only show error alerts for actual API/technical errors, not "no events found" 
+                        // For "no events found", just do nothing - user can try again
+                        if !response.message.lowercased().contains("no events") && 
+                           !response.message.lowercased().contains("couldn't find") &&
+                           !response.message.lowercased().contains("no calendar events") {
+                            alertMessage = response.message
+                            showAlert = true
+                        }
                     }
                 }
-            } catch {
-                await MainActor.run {
-                    isLoading = false
-                    alertMessage = "Error: \(error.localizedDescription)"
-                    showAlert = true
-                }
+        } catch {
+            await MainActor.run {
+                isLoading = false
+                alertMessage = "Error: \(error.localizedDescription)"
+                showAlert = true
             }
         }
     }
@@ -433,6 +613,7 @@ struct EventPreviewView: View {
     let icsContent: String
     let calendarService: CalendarService
     @ObservedObject var subscriptionService: SubscriptionService
+    let userTimezone: TimeZone
     let onEventsAdded: (Int) -> Void
     
     @Environment(\.presentationMode) var presentationMode
@@ -446,11 +627,12 @@ struct EventPreviewView: View {
     @State private var confettiTrigger: Int = 0
     @State private var showingShareSheet = false
     
-    init(events: [ParsedEvent], icsContent: String, calendarService: CalendarService, subscriptionService: SubscriptionService, onEventsAdded: @escaping (Int) -> Void) {
+    init(events: [ParsedEvent], icsContent: String, calendarService: CalendarService, subscriptionService: SubscriptionService, userTimezone: TimeZone, onEventsAdded: @escaping (Int) -> Void) {
         self.events = events
         self.icsContent = icsContent
         self.calendarService = calendarService
         self.subscriptionService = subscriptionService
+        self.userTimezone = userTimezone
         self.onEventsAdded = onEventsAdded
         // Select all events by default
         _selectedEvents = State(initialValue: Set(events.map { $0.id }))
@@ -625,46 +807,70 @@ struct EventPreviewView: View {
     
     private var celebrationOverlay: some View {
         ZStack {
-            Color.black.opacity(0.3)
+            // Softer, lighter background with blur effect
+            Color.white.opacity(0.95)
                 .ignoresSafeArea()
             
-            VStack(spacing: 20) {
-                // Main celebration icon
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 100))
-                    .foregroundColor(.green)
-                    .scaleEffect(celebrationScale)
-                    .rotationEffect(.degrees(celebrationRotation))
+            VStack(spacing: 30) {
+                // Main celebration icon - blue with white background circle
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 140, height: 140)
+                        .shadow(color: .blue.opacity(0.3), radius: 20, x: 0, y: 10)
+                    
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 100))
+                        .foregroundColor(.blue)
+                        .scaleEffect(celebrationScale)
+                        .rotationEffect(.degrees(celebrationRotation))
+                }
                 
-                // Success message
-                VStack(spacing: 8) {
+                // Success message with better contrast
+                VStack(spacing: 12) {
                     Text("🎉 Success!")
-                        .font(.title)
+                        .font(.largeTitle)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     
                     Text("Added \(selectedEvents.count) event\(selectedEvents.count == 1 ? "" : "s") to your calendar")
-                        .font(.headline)
-                        .foregroundColor(.white.opacity(0.9))
+                        .font(.title2)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
                 }
                 .opacity(celebrationOpacity)
                 
-                // Confetti effect
-                ForEach(0..<12, id: \.self) { i in
-                    Circle()
-                        .fill(Color.random)
-                        .frame(width: 8, height: 8)
+                // Enhanced confetti effect with more variety
+                ForEach(0..<20, id: \.self) { i in
+                    let shapes = ["circle.fill", "star.fill", "heart.fill", "diamond.fill"]
+                    let colors: [Color] = [.blue, .purple, .pink, .orange, .yellow, .green]
+                    
+                    Image(systemName: shapes.randomElement() ?? "circle.fill")
+                        .font(.system(size: CGFloat.random(in: 8...16)))
+                        .foregroundColor(colors.randomElement() ?? .blue)
                         .offset(
-                            x: CGFloat.random(in: -100...100),
-                            y: CGFloat.random(in: -200...0)
+                            x: CGFloat.random(in: -150...150),
+                            y: CGFloat.random(in: -250...50)
                         )
-                        .opacity(celebrationOpacity)
+                        .opacity(celebrationOpacity * 0.8)
+                        .scaleEffect(CGFloat.random(in: 0.5...1.5))
+                        .rotationEffect(.degrees(Double.random(in: 0...360)))
                         .animation(
-                            .easeOut(duration: 2.0).delay(Double.random(in: 0...0.5)),
+                            .easeOut(duration: Double.random(in: 1.5...3.0))
+                                .delay(Double.random(in: 0...0.8)),
                             value: confettiTrigger
                         )
                 }
+                
+                // Subtle pulse effect background
+                Circle()
+                    .stroke(Color.blue.opacity(0.3), lineWidth: 2)
+                    .frame(width: 200, height: 200)
+                    .scaleEffect(celebrationScale * 1.5)
+                    .opacity(celebrationOpacity * 0.5)
+                    .animation(.easeOut(duration: 2.0), value: confettiTrigger)
             }
         }
     }
@@ -682,7 +888,7 @@ struct EventPreviewView: View {
         // For now, we'll use all events - in a real implementation, 
         // you'd filter the ICS content to only include selected events
         
-        calendarService.addEventsToCalendar(icsContent: icsContent, selectedCalendar: selectedCalendar) { success, error in
+        calendarService.addEventsToCalendar(icsContent: icsContent, selectedCalendar: selectedCalendar, userTimezone: userTimezone) { success, error in
             DispatchQueue.main.async {
                 if success {
                     // Start celebration animation
@@ -761,7 +967,7 @@ struct EventCard: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
                 
                 VStack(alignment: .leading, spacing: 12) {
-                    // Header: Title only (removed recurring badge from here)
+                    // Header: Title only
                     HStack {
                         Text(event.title)
                             .font(.headline)
@@ -769,6 +975,23 @@ struct EventCard: View {
                             .foregroundColor(.primary)
                         
                         Spacer()
+                    }
+                    
+                    // Recurring badge - moved ABOVE the blue date/time section
+                    if event.isRecurring {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                            Text(formatComprehensiveRecurrence(event.recurrencePattern))
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                                .fontWeight(.medium)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.orange.opacity(0.15))
+                        .cornerRadius(6)
                     }
                     
                     // Time and timezone info - REQUIRED for ICS
@@ -780,7 +1003,7 @@ struct EventCard: View {
                                     .font(.caption)
                                 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(formatEventTime(start: startDate, end: event.formattedEndDate))
+                                    Text(formatRecurringEventTime(start: startDate, end: event.formattedEndDate, isRecurring: event.isRecurring))
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundColor(.primary)
@@ -806,36 +1029,6 @@ struct EventCard: View {
                                         .padding(.vertical, 2)
                                         .background(Color.blue.opacity(0.1))
                                         .cornerRadius(4)
-                                }
-                            }
-                            
-                            // Recurring badge - moved here, under the date/time section
-                            if event.isRecurring {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "arrow.clockwise")
-                                        .font(.caption2)
-                                        .foregroundColor(.orange)
-                                    Text("Recurs \(formatRecurrenceFrequency(event.recurrencePattern))")
-                                        .font(.caption2)
-                                        .foregroundColor(.orange)
-                                        .fontWeight(.medium)
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.orange.opacity(0.15))
-                                .cornerRadius(6)
-                            }
-                            
-                            // Recurrence details if applicable
-                            if event.isRecurring, let pattern = event.recurrencePattern {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "repeat")
-                                        .font(.caption2)
-                                        .foregroundColor(.orange)
-                                    Text("Repeats: \(pattern)")
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
-                                        .fontWeight(.medium)
                                 }
                             }
                         }
@@ -949,38 +1142,49 @@ struct EventCard: View {
         }
     }
     
-    private func formatRecurrenceFrequency(_ pattern: String?) -> String {
-        guard let pattern = pattern?.lowercased() else { return "regularly" }
+    private func formatComprehensiveRecurrence(_ pattern: String?) -> String {
+        guard let pattern = pattern?.lowercased() else { return "Recurs regularly" }
         
+        // Handle ICS-style patterns with more comprehensive detection
         if pattern.contains("daily") || pattern.contains("every day") {
-            return "daily"
+            return "Recurs daily"
         } else if pattern.contains("weekdays") || pattern.contains("monday through friday") {
-            return "weekdays"
+            return "Recurs weekdays"
         } else if pattern.contains("weekends") {
-            return "weekends"
+            return "Recurs weekends"
         } else if pattern.contains("monday") && pattern.contains("wednesday") && pattern.contains("friday") {
-            return "Mon, Wed, Fri"
+            return "Recurs Mon, Wed, Fri"
         } else if pattern.contains("tuesday") && pattern.contains("thursday") {
-            return "Tue, Thu"
+            return "Recurs Tue, Thu"
         } else if pattern.contains("weekly") {
-            if pattern.contains("monday") { return "weekly on Monday" }
-            else if pattern.contains("tuesday") { return "weekly on Tuesday" }
-            else if pattern.contains("wednesday") { return "weekly on Wednesday" }
-            else if pattern.contains("thursday") { return "weekly on Thursday" }
-            else if pattern.contains("friday") { return "weekly on Friday" }
-            else if pattern.contains("saturday") { return "weekly on Saturday" }
-            else if pattern.contains("sunday") { return "weekly on Sunday" }
-            else { return "weekly" }
+            if pattern.contains("monday") { return "Recurs weekly on Mon" }
+            else if pattern.contains("tuesday") { return "Recurs weekly on Tue" }
+            else if pattern.contains("wednesday") { return "Recurs weekly on Wed" }
+            else if pattern.contains("thursday") { return "Recurs weekly on Thu" }
+            else if pattern.contains("friday") { return "Recurs weekly on Fri" }
+            else if pattern.contains("saturday") { return "Recurs weekly on Sat" }
+            else if pattern.contains("sunday") { return "Recurs weekly on Sun" }
+            else { return "Recurs weekly" }
         } else if pattern.contains("first") && pattern.contains("monday") {
-            return "first Monday of month"
+            return "Recurs 1st Mon of month"
         } else if pattern.contains("last") && pattern.contains("friday") {
-            return "last Friday of month"
+            return "Recurs last Fri of month"
         } else if pattern.contains("monthly") {
-            return "monthly"
+            return "Recurs monthly"
         } else if pattern.contains("yearly") || pattern.contains("annually") {
-            return "yearly"
+            return "Recurs yearly"
         } else if pattern.contains("bi-weekly") || pattern.contains("every 2 weeks") {
-            return "bi-weekly"
+            return "Recurs bi-weekly"
+        } else if pattern.contains("every") && pattern.contains("hour") {
+            return "Recurs hourly"
+        } else if pattern.contains("freq=daily") {
+            return "Recurs daily"
+        } else if pattern.contains("freq=weekly") {
+            return "Recurs weekly"
+        } else if pattern.contains("freq=monthly") {
+            return "Recurs monthly"
+        } else if pattern.contains("freq=yearly") {
+            return "Recurs yearly"
         } else {
             // Check for multiple days pattern
             let days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -995,14 +1199,59 @@ struct EventCard: View {
             
             if foundDays.count > 1 {
                 if foundDays.count == 2 {
-                    return "\(foundDays[0]) & \(foundDays[1])"
+                    return "Recurs \(foundDays[0]) & \(foundDays[1])"
                 } else if foundDays.count > 2 {
                     let lastDay = foundDays.removeLast()
-                    return "\(foundDays.joined(separator: ", ")) & \(lastDay)"
+                    return "Recurs \(foundDays.joined(separator: ", ")) & \(lastDay)"
                 }
+            } else if foundDays.count == 1 {
+                return "Recurs \(foundDays[0])"
             }
             
-            return pattern.capitalized
+            // Fallback to pattern with "Recurs" prefix
+            return "Recurs \(pattern.prefix(20).capitalized)"
+        }
+    }
+    
+    private func formatRecurringEventTime(start: Date, end: Date?, isRecurring: Bool) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .none
+        
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateStyle = .none
+        timeFormatter.timeStyle = .short
+        
+        if isRecurring {
+            // For recurring events, show "Starts [date]" and "Ends [date or ∞]"
+            let startDateString = dateFormatter.string(from: start)
+            let startTimeString = timeFormatter.string(from: start)
+            
+            if let end = end {
+                let endDateString = dateFormatter.string(from: end)
+                let endTimeString = timeFormatter.string(from: end)
+                
+                // Check if it's the same date for single-day recurring events
+                if Calendar.current.isDate(start, inSameDayAs: end) {
+                    return "Starts \(startDateString)\n\(startTimeString) - \(endTimeString)"
+                } else {
+                    return "Starts \(startDateString) \(startTimeString)\nEnds \(endDateString) \(endTimeString)"
+                }
+            } else {
+                // No end date - recurring indefinitely
+                return "Starts \(startDateString) \(startTimeString)\nEnds ∞ Indefinite"
+            }
+        } else {
+            // Non-recurring events - show the original format
+            let dateString = dateFormatter.string(from: start)
+            let startTimeString = timeFormatter.string(from: start)
+            
+            if let end = end {
+                let endTimeString = timeFormatter.string(from: end)
+                return "\(dateString)\n\(startTimeString) - \(endTimeString)"
+            } else {
+                return "\(dateString)\n\(startTimeString)"
+            }
         }
     }
 }
@@ -1176,24 +1425,22 @@ struct ShareSheet: UIViewControllerRepresentable {
 struct UsageIndicatorView: View {
     @ObservedObject var subscriptionService: SubscriptionService
     @Binding var showingPremiumModal: Bool
-    @State private var usageStats: UsageStats?
+    let dailyConversionsUsed: Int
+    let dailyLimit: Int
     
     var body: some View {
+        let remaining = max(0, dailyLimit - dailyConversionsUsed)
+        let isAtLimit = remaining == 0
+        
         HStack {
             Text("Daily conversions")
                 .font(.caption)
                 .foregroundColor(.secondary)
             
-            if let stats = usageStats {
-                Text("\(stats.remaining) of \(stats.limit) remaining")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(stats.remaining <= 1 ? .red : .primary)
-            } else {
-                Text("Loading...")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            Text("\(remaining) of \(dailyLimit) remaining")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
             
             Spacer()
             
@@ -1207,23 +1454,7 @@ struct UsageIndicatorView: View {
         .padding(.vertical, 8)
         .background(Color.blue.opacity(0.05))
         .cornerRadius(8)
-        .onAppear {
-            loadUsageStats()
-        }
     }
-    
-    private func loadUsageStats() {
-        // TODO: Load usage stats from API
-        // For now, simulate with local data
-        usageStats = UsageStats(count: 1, limit: 3, remaining: 2, isPremium: false)
-    }
-}
-
-struct UsageStats {
-    let count: Int
-    let limit: Int
-    let remaining: Int
-    let isPremium: Bool
 }
 
 // MARK: - Banner Ad View

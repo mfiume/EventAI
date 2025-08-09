@@ -4,14 +4,16 @@ import StoreKit
 struct PremiumModalView: View {
     @ObservedObject var subscriptionService: SubscriptionService
     @Environment(\.dismiss) private var dismiss
+    @State private var isLoading = false
+    @State private var errorMessage: String?
     @State private var localizedPrice: String = "$4.99/month"
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Dark gradient background
+                // Use dark gradient background similar to BlastThePast
                 LinearGradient(
-                    colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.5), Color.black],
+                    colors: [Color.blue.opacity(0.4), Color.purple.opacity(0.6), Color.black],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -20,7 +22,7 @@ struct PremiumModalView: View {
                 .position(x: geometry.size.width/2, y: geometry.size.height/2)
 
                 // Darker overlay for better text readability
-                Color.black.opacity(0.4)
+                Color.black.opacity(0.7)
                     .ignoresSafeArea(.all)
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     .position(x: geometry.size.width/2, y: geometry.size.height/2)
@@ -38,7 +40,7 @@ struct PremiumModalView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.top, 20) // 20px from top
 
                     Spacer()
                 }
@@ -70,7 +72,7 @@ struct PremiumModalView: View {
                             .foregroundColor(.blue)
                             .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
 
-                        // Description
+                        // Description (four lines, ellipsized)
                         Text("Get unlimited calendar events, remove ads, and add photos to provide context for your events.")
                             .font(.system(size: 16))
                             .foregroundColor(.gray)
@@ -94,14 +96,11 @@ struct PremiumModalView: View {
                     VStack(spacing: 16) {
                         Button(action: {
                             Task {
-                                await subscriptionService.purchaseSubscription()
-                                if subscriptionService.isPremium {
-                                    dismiss()
-                                }
+                                await purchasePremium()
                             }
                         }) {
                             HStack {
-                                if subscriptionService.isLoading {
+                                if isLoading {
                                     ProgressView()
                                         .progressViewStyle(CircularProgressViewStyle(tint: .black))
                                         .scaleEffect(0.8)
@@ -110,7 +109,7 @@ struct PremiumModalView: View {
                                         .font(.system(size: 16))
                                         .foregroundColor(.black)
                                 }
-                                Text(subscriptionService.isLoading ? "Processing..." : "Upgrade to Premium")
+                                Text(isLoading ? "Processing..." : "Upgrade to Premium")
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundColor(.black)
                             }
@@ -118,10 +117,10 @@ struct PremiumModalView: View {
                             .padding(.vertical, 16)
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(.yellow.opacity(subscriptionService.isLoading ? 0.6 : 1.0))
+                                    .fill(.yellow.opacity(isLoading ? 0.6 : 1.0))
                             )
                         }
-                        .disabled(subscriptionService.isLoading)
+                        .disabled(isLoading)
 
                         Text("\(localizedPrice) • Cancel anytime")
                             .font(.system(size: 14))
@@ -131,13 +130,13 @@ struct PremiumModalView: View {
                     .padding(.bottom, 40)
                 } // Close main content VStack
                 
-                // Error message overlay
-                if let errorMessage = subscriptionService.purchaseError {
+                // Error message overlay - positioned above title where there's more room
+                if let errorMessage = errorMessage {
                     VStack {
                         Spacer()
                             .frame(height: 140) // Space for close button area
                         
-                        // Error banner
+                        // Error banner matching ChatView style
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.white)
@@ -148,9 +147,7 @@ struct PremiumModalView: View {
                                 .lineLimit(2)
                                 .multilineTextAlignment(.leading)
                             Spacer()
-                            Button(action: { 
-                                // Clear error - we'd need to add this to SubscriptionService
-                            }) {
+                            Button(action: { self.errorMessage = nil }) {
                                 Image(systemName: "xmark")
                                     .foregroundColor(.white)
                                     .font(.system(size: 12))
@@ -175,9 +172,91 @@ struct PremiumModalView: View {
     }
 
     private func loadLocalizedPrice() async {
-        await MainActor.run {
-            localizedPrice = subscriptionService.monthlyPriceString
+        do {
+            let productId = "eventai_premium_monthly" // EventAI monthly subscription
+            let products = try await Product.products(for: [productId])
+
+            if let product = products.first {
+                await MainActor.run {
+                    localizedPrice = product.displayPrice
+                }
+            }
+        } catch {
+            // Keep the default "$4.99/month" if price loading fails
         }
+    }
+
+    private func purchasePremium() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            // Load the product from App Store
+            let productId = "eventai_premium_monthly"
+            let products = try await Product.products(for: [productId])
+
+            guard let product = products.first else {
+                errorMessage = "Product not configured in App Store Connect. Please set up eventai_premium_monthly subscription."
+                isLoading = false
+                return
+            }
+
+            print("🛒 Starting purchase flow for product: eventai_premium_monthly")
+
+            // Initiate App Store purchase
+            print("💳 Initiating App Store purchase...")
+            let result = try await product.purchase()
+
+            switch result {
+            case .success(let verification):
+                switch verification {
+                case .verified(let transaction):
+                    print("✅ Purchase successful, transaction ID: \(transaction.id)")
+
+                    // Finish the transaction first
+                    await transaction.finish()
+
+                    // Update subscription service
+                    await subscriptionService.purchaseSubscription()
+                    
+                    if subscriptionService.isPremium {
+                        // Purchase successful and confirmed
+                        dismiss()
+                    } else {
+                        // Provide retry option
+                        errorMessage = "Purchase completed! If premium features don't appear immediately, please restart the app."
+
+                        // Auto-dismiss after showing message
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            dismiss()
+                        }
+                    }
+
+                case .unverified:
+                    errorMessage = "Purchase verification failed"
+                }
+
+            case .userCancelled:
+                errorMessage = nil // Don't show error for user cancellation
+
+            case .pending:
+                errorMessage = "Purchase is pending approval"
+
+            @unknown default:
+                errorMessage = "Purchase failed"
+            }
+
+        } catch StoreKitError.networkError {
+            errorMessage = "Network error. Please check your connection."
+        } catch StoreKitError.systemError {
+            errorMessage = "App Store unavailable. Please try again later."
+        } catch StoreKitError.userCancelled {
+            errorMessage = nil // Don't show error for user cancellation
+        } catch {
+            errorMessage = "Purchase failed: \(error.localizedDescription)"
+        }
+
+        isLoading = false
     }
 }
 
