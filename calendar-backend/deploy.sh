@@ -15,7 +15,7 @@ export $(grep -v '^#' secrets/secrets.env | xargs)
 
 # Set project ID
 PROJECT_ID="levelup-467902"
-SERVICE_NAME="event-ai-api"
+SERVICE_NAME="eventai-api"
 REGION="us-central1"
 
 # Set the project
@@ -28,7 +28,7 @@ gcloud run deploy $SERVICE_NAME \
   --region $REGION \
   --allow-unauthenticated \
   --port 8080 \
-  --set-env-vars NODE_ENV=production,ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  --set-env-vars ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
   --memory 1Gi \
   --cpu 1 \
   --max-instances 10 \

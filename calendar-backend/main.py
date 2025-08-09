@@ -59,9 +59,13 @@ else:
 user_usage: Dict[str, Dict] = {}
 user_subscriptions: Dict[str, Dict] = {}
 
-# Usage limits
-FREE_DAILY_LIMIT = 3
-PREMIUM_DAILY_LIMIT = 20
+# Usage limits (temporarily increased for testing - change back for production)
+FREE_DAILY_LIMIT = 100  # TODO: Change back to 3 for production
+PREMIUM_DAILY_LIMIT = 200  # TODO: Change back to 20 for production
+
+# Reset configuration
+RESET_TIMEZONE = "America/New_York"  # Eastern Time
+RESET_HOUR = 0  # Midnight (24-hour format)
 
 class UserUsageService:
     @staticmethod
@@ -79,38 +83,75 @@ class UserUsageService:
         return hashlib.sha256(combined.encode()).hexdigest()[:16]
     
     @staticmethod
+    def get_next_reset_time() -> datetime:
+        """Get next reset time (midnight in configured timezone)"""
+        reset_tz = pytz.timezone(RESET_TIMEZONE)
+        now = datetime.now(reset_tz)
+        
+        # Create midnight today in reset timezone
+        today_reset = reset_tz.localize(
+            datetime.combine(now.date(), datetime.min.time().replace(hour=RESET_HOUR))
+        )
+        
+        # If current time is past today's reset, use tomorrow's reset
+        if now >= today_reset:
+            tomorrow_reset = today_reset + timedelta(days=1)
+            return tomorrow_reset
+        else:
+            return today_reset
+    
+    @staticmethod
+    def get_current_reset_date() -> str:
+        """Get current reset date (date when today's reset occurred/will occur)"""
+        reset_tz = pytz.timezone(RESET_TIMEZONE)
+        now = datetime.now(reset_tz)
+        
+        # Create midnight today in reset timezone
+        today_reset = reset_tz.localize(
+            datetime.combine(now.date(), datetime.min.time().replace(hour=RESET_HOUR))
+        )
+        
+        # If current time is before today's reset, use yesterday's reset date
+        if now < today_reset:
+            yesterday = now.date() - timedelta(days=1)
+            return yesterday.isoformat()
+        else:
+            return now.date().isoformat()
+    
+    @staticmethod
     def reset_daily_usage():
         """Reset usage counters for all users (called daily)"""
         global user_usage
-        current_date = datetime.now(timezone.utc).date()
+        current_reset_date = UserUsageService.get_current_reset_date()
         
         for user_id in user_usage:
             user_usage[user_id] = {
                 "count": 0,
-                "last_reset": current_date.isoformat(),
-                "first_use": user_usage[user_id].get("first_use", current_date.isoformat())
+                "last_reset": current_reset_date,
+                "first_use": user_usage[user_id].get("first_use", current_reset_date)
             }
-        print(f"🔄 Reset daily usage for {len(user_usage)} users")
+        print(f"🔄 Reset daily usage for {len(user_usage)} users at {current_reset_date}")
     
     @staticmethod
     def get_user_usage(user_id: str) -> Dict:
         """Get current usage stats for user"""
-        current_date = datetime.now(timezone.utc).date()
+        current_reset_date = UserUsageService.get_current_reset_date()
         
         if user_id not in user_usage:
             user_usage[user_id] = {
                 "count": 0,
-                "last_reset": current_date.isoformat(),
-                "first_use": current_date.isoformat()
+                "last_reset": current_reset_date,
+                "first_use": current_reset_date
             }
         
-        # Reset if it's a new day
+        # Reset if it's a new reset period
         user_data = user_usage[user_id]
-        last_reset = datetime.fromisoformat(user_data["last_reset"]).date()
+        last_reset_date = user_data["last_reset"]
         
-        if current_date > last_reset:
+        if current_reset_date != last_reset_date:
             user_data["count"] = 0
-            user_data["last_reset"] = current_date.isoformat()
+            user_data["last_reset"] = current_reset_date
+            print(f"🔄 Auto-reset usage for user {user_id[:8]}... (was {last_reset_date}, now {current_reset_date})")
         
         return user_data
     
@@ -146,13 +187,17 @@ class UserUsageService:
         can_proceed = usage["count"] < limit
         remaining = max(0, limit - usage["count"])
         
+        next_reset = UserUsageService.get_next_reset_time()
+        
         return {
             "allowed": can_proceed,
             "count": usage["count"],
             "limit": limit,
             "remaining": remaining,
             "is_premium": is_premium,
-            "reset_date": usage["last_reset"]
+            "reset_date": usage["last_reset"],
+            "reset_time": next_reset.isoformat(),
+            "reset_timezone": RESET_TIMEZONE
         }
     
     @staticmethod
@@ -194,6 +239,8 @@ class UsageResponse(BaseModel):
     is_premium: bool
     reset_date: str
     can_convert: bool
+    reset_time: Optional[str] = None
+    reset_timezone: Optional[str] = None
 
 class SubscriptionRequest(BaseModel):
     receipt_data: str
@@ -476,7 +523,9 @@ async def get_usage_stats(request: Request):
         remaining=usage_check["remaining"],
         is_premium=usage_check["is_premium"],
         reset_date=usage_check["reset_date"],
-        can_convert=usage_check["allowed"]
+        can_convert=usage_check["allowed"],
+        reset_time=usage_check["reset_time"],
+        reset_timezone=usage_check["reset_timezone"]
     )
 
 @api_router.post("/subscription/verify", response_model=SubscriptionResponse)
