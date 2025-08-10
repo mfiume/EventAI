@@ -221,9 +221,11 @@ class CalendarService: ObservableObject {
             print("📅 Adding event '\(eventData.title)' at \(eventData.startDate) (TZ: \(event.timeZone?.identifier ?? "nil"))")
             
             do {
-                try eventStore.save(event, span: .thisEvent)
+                // Use appropriate span for recurring vs one-time events
+                let span: EKSpan = (event.recurrenceRules?.isEmpty == false) ? .futureEvents : .thisEvent
+                try eventStore.save(event, span: span)
                 successCount += 1
-                print("✅ Added event: \(event.title ?? "Unknown") successfully")
+                print("✅ Added event: \(event.title ?? "Unknown") successfully with span: \(span == .futureEvents ? "futureEvents (recurring)" : "thisEvent (one-time)")")
                 
                 // DEBUG: Verify the event was saved with recurrence rules
                 if let savedEvent = eventStore.event(withIdentifier: event.eventIdentifier ?? "") {
@@ -255,6 +257,13 @@ class CalendarService: ObservableObject {
         var currentLine = ""
         
         for line in rawLines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Skip completely empty lines
+            if trimmedLine.isEmpty {
+                continue
+            }
+            
             if line.hasPrefix(" ") || line.hasPrefix("\t") {
                 // This is a continuation line - remove the leading space/tab and append
                 currentLine += line.dropFirst()

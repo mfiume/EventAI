@@ -73,7 +73,7 @@ struct PremiumModalView: View {
                             .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
 
                         // Description (four lines, ellipsized)
-                        Text("Get unlimited calendar events, remove ads, and add photos to provide context for your events.")
+                        Text("Get unlimited calendar events, remove ads, and unlock priority processing for your events.")
                             .font(.system(size: 16))
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)
@@ -84,8 +84,8 @@ struct PremiumModalView: View {
                         VStack(spacing: 12) {
                             FeatureRow(icon: "checkmark.circle.fill", text: "20 conversions per day (vs 3)")
                             FeatureRow(icon: "checkmark.circle.fill", text: "Ad-free experience")
-                            FeatureRow(icon: "checkmark.circle.fill", text: "Photo analysis for events")
                             FeatureRow(icon: "checkmark.circle.fill", text: "Priority processing")
+                            FeatureRow(icon: "checkmark.circle.fill", text: "Support development")
                         }
                     }
                     .padding(.horizontal, 20) // Screen edge padding for all content

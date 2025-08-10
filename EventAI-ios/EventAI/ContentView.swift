@@ -14,9 +14,10 @@ struct ContentView: View {
     @State private var currentEvents: [ParsedEvent] = []
     @State private var currentICSContent = ""
     @State private var dailyConversionsUsed = 0
-    @State private var dailyLimit = 3
-    @State private var premiumDailyLimit = 20
+    @State private var dailyLimit = 100  // Updated to match backend testing limits
+    @State private var premiumDailyLimit = 200  // Updated to match backend testing limits
     @State private var canConvert = true
+    @State private var isLoadingUsage = true
     @State private var selectedImage: UIImage?
     @State private var showingImagePicker = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
@@ -27,12 +28,13 @@ struct ContentView: View {
     @StateObject private var adService = AdService()
     @StateObject private var locationService = LocationService()
     @StateObject private var subscriptionService = SubscriptionService()
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Usage indicator for free users
-                if !subscriptionService.isPremium {
+                // Usage indicator for free users (only show after loading)
+                if !subscriptionService.isPremium && !isLoadingUsage {
                     UsageIndicatorView(subscriptionService: subscriptionService, showingPremiumModal: $showingPremiumModal, dailyConversionsUsed: dailyConversionsUsed, dailyLimit: dailyLimit)
                 }
                 
@@ -128,7 +130,7 @@ struct ContentView: View {
                                     .foregroundColor(.blue)
                                 
                                 VStack(spacing: 8) {
-                                    Text("Get more conversions, remove ads, and add photos to provide context for your events.")
+                                    Text("Get more conversions, remove ads, and unlock priority processing for your events.")
                                         .font(.system(size: 16))
                                         .foregroundColor(.secondary)
                                         .multilineTextAlignment(.center)
@@ -222,6 +224,13 @@ struct ContentView: View {
             adService.initializeAds()
             Task {
                 await loadUsageFromBackend()
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active {
+                Task {
+                    await loadUsageFromBackend()
+                }
             }
         }
     }
@@ -469,6 +478,7 @@ struct ContentView: View {
     
     @MainActor
     private func loadUsageFromBackend() async {
+        isLoadingUsage = true
         do {
             let usageResponse = try await apiService.getUsageStats()
             dailyConversionsUsed = usageResponse.count
@@ -491,6 +501,7 @@ struct ContentView: View {
             print("❌ Failed to load usage: \(error)")
             // Keep existing stats on error
         }
+        isLoadingUsage = false
     }
     
     private func generateCalendarEvents() {
@@ -1458,9 +1469,13 @@ struct CalendarRow: View {
                         .fontWeight(.semibold)
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())  // Makes entire area tappable
         }
         .buttonStyle(PlainButtonStyle())
+        .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+        .cornerRadius(8)
     }
 }
 

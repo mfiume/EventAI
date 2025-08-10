@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Header, Requ
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 import re
 from typing import Optional, Union, Dict
 import requests
@@ -18,6 +18,9 @@ from PIL import Image
 import io
 import hashlib
 import time
+
+# Import our BigQuery service
+from bigquery_service import get_bigquery_service
 
 # Load environment variables from secrets directory (if exists locally)
 if os.path.exists("secrets/secrets.env"):
@@ -55,9 +58,8 @@ else:
     print("⚠️ Anthropic API key not configured")
     anthropic_error = "API key not configured"
 
-# Usage tracking - in-memory storage (replace with database in production)
-user_usage: Dict[str, Dict] = {}
-user_subscriptions: Dict[str, Dict] = {}
+# Initialize BigQuery service for persistent storage
+bq_service = get_bigquery_service()
 
 # Usage limits (temporarily increased for testing - change back for production)
 FREE_DAILY_LIMIT = 100  # TODO: Change back to 3 for production
@@ -73,14 +75,38 @@ class UserUsageService:
         """Generate consistent user ID from device info or IP"""
         # Try to get device ID from headers
         device_id = request.headers.get("X-Device-ID")
-        if device_id:
+        apple_id = request.headers.get("X-Apple-ID")
+        
+        # Create a unique user identifier that persists across devices
+        if apple_id:
+            # Use Apple ID as primary identifier for cross-device persistence
+            return hashlib.sha256(apple_id.encode()).hexdigest()[:16]
+        elif device_id:
             return hashlib.sha256(device_id.encode()).hexdigest()[:16]
         
-        # Fallback to IP + User-Agent hash
+        # Fallback to IP + User-Agent hash for anonymous users
         ip = request.client.host
         user_agent = request.headers.get("User-Agent", "")
         combined = f"{ip}:{user_agent}"
         return hashlib.sha256(combined.encode()).hexdigest()[:16]
+    
+    @staticmethod
+    def ensure_user_exists(user_id: str, request: Request):
+        """Ensure user record exists in BigQuery"""
+        device_id = request.headers.get("X-Device-ID")
+        apple_id = request.headers.get("X-Apple-ID")
+        user_agent = request.headers.get("User-Agent")
+        ip_address = request.client.host
+        
+        # Create or update user record
+        bq_service.get_or_create_user(
+            user_id=user_id,
+            device_id=device_id,
+            apple_id=apple_id,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            timezone_str="America/New_York"  # Default timezone
+        )
     
     @staticmethod
     def get_next_reset_time() -> datetime:
@@ -120,58 +146,26 @@ class UserUsageService:
     
     @staticmethod
     def reset_daily_usage():
-        """Reset usage counters for all users (called daily)"""
-        global user_usage
-        current_reset_date = UserUsageService.get_current_reset_date()
-        
-        for user_id in user_usage:
-            user_usage[user_id] = {
-                "count": 0,
-                "last_reset": current_reset_date,
-                "first_use": user_usage[user_id].get("first_use", current_reset_date)
-            }
-        print(f"🔄 Reset daily usage for {len(user_usage)} users at {current_reset_date}")
+        """Reset is now handled automatically by BigQuery date-based queries"""
+        print("🔄 Daily usage reset is automatic with BigQuery date-based tracking")
     
     @staticmethod
     def get_user_usage(user_id: str) -> Dict:
-        """Get current usage stats for user"""
-        current_reset_date = UserUsageService.get_current_reset_date()
+        """Get current usage stats for user from BigQuery"""
+        # Get usage data from BigQuery (automatically handles date-based resets)
+        usage_data = bq_service.get_user_usage(user_id)
         
-        if user_id not in user_usage:
-            user_usage[user_id] = {
-                "count": 0,
-                "last_reset": current_reset_date,
-                "first_use": current_reset_date
-            }
-        
-        # Reset if it's a new reset period
-        user_data = user_usage[user_id]
-        last_reset_date = user_data["last_reset"]
-        
-        if current_reset_date != last_reset_date:
-            user_data["count"] = 0
-            user_data["last_reset"] = current_reset_date
-            print(f"🔄 Auto-reset usage for user {user_id[:8]}... (was {last_reset_date}, now {current_reset_date})")
-        
-        return user_data
+        # Convert to format expected by existing code
+        return {
+            "count": usage_data.get("conversion_count", 0),
+            "last_reset": str(usage_data.get("usage_date", date.today())),
+            "first_use": str(usage_data.get("usage_date", date.today()))
+        }
     
     @staticmethod
     def is_premium(user_id: str) -> bool:
-        """Check if user has active premium subscription"""
-        if user_id not in user_subscriptions:
-            return False
-        
-        sub = user_subscriptions[user_id]
-        if not sub.get("is_active", False):
-            return False
-        
-        # Check if subscription is expired
-        expiry = datetime.fromisoformat(sub["expiry_date"])
-        if expiry < datetime.now(timezone.utc):
-            sub["is_active"] = False
-            return False
-        
-        return True
+        """Check if user has active premium subscription from BigQuery"""
+        return bq_service.is_user_premium(user_id)
     
     @staticmethod
     def can_convert(user_id: str) -> Dict:
@@ -202,10 +196,9 @@ class UserUsageService:
     
     @staticmethod
     def increment_usage(user_id: str):
-        """Increment user's conversion count"""
-        usage = UserUsageService.get_user_usage(user_id)
-        usage["count"] += 1
-        print(f"📊 User {user_id[:8]}... used {usage['count']} conversions today")
+        """Increment user's conversion count in BigQuery"""
+        new_count = bq_service.increment_usage(user_id)
+        print(f"📊 User {user_id[:8]}... used {new_count} conversions today")
 
 # Initialize usage service
 usage_service = UserUsageService()
@@ -438,29 +431,19 @@ def format_ics_description(description: str) -> str:
     if not description:
         return description
     
-    # Replace various newline formats with proper ICS line breaks
-    description = description.replace('\\n\\n', '\n\n')  # Handle escaped double newlines
-    description = description.replace('\\n', '\n')       # Handle escaped single newlines
+    # Replace various newline formats with spaces for Apple Calendar
+    description = description.replace('\\n\\n', ' ')  # Handle escaped double newlines
+    description = description.replace('\\n', ' ')     # Handle escaped single newlines
+    description = description.replace('\n\n', ' ')    # Handle actual double newlines
+    description = description.replace('\n', ' ')      # Handle actual single newlines
     
-    # For Apple Calendar, use specific formatting that renders better:
-    # - Double line breaks for paragraph separation
-    # - Clean up extra whitespace
-    lines = description.split('\n')
-    formatted_lines = []
+    # Clean up multiple spaces
+    import re
+    description = re.sub(r'\s+', ' ', description)
     
-    for i, line in enumerate(lines):
-        line = line.strip()
-        if line:  # Non-empty line
-            formatted_lines.append(line)
-        elif i > 0 and formatted_lines and not formatted_lines[-1] == '':
-            # Add empty line for paragraph break (but avoid consecutive empty lines)
-            formatted_lines.append('')
+    # Trim whitespace
+    formatted_desc = description.strip()
     
-    # Join with single newlines - most calendar apps handle this better than double newlines
-    formatted_desc = '\n'.join(formatted_lines)
-    
-    # ICS spec: Lines should not exceed 75 octets, but most modern calendar apps handle longer lines
-    # We'll keep it simple and let the icalendar library handle proper folding
     return formatted_desc
 
 def create_calendar_from_events(events_data: list, timezone_str: str = "UTC") -> str:
@@ -485,13 +468,16 @@ def create_calendar_from_events(events_data: list, timezone_str: str = "UTC") ->
         # Add EventAI attribution to description with proper formatting for Apple Calendar
         description = event_data.get('description') or ''
         if description:
-            description = description + '\n\nCreated by EventAI (https://leveluplife.app/eventai)'
+            description = description + '\n\nCreated by EventAI'
         else:
-            description = 'Created by EventAI (https://leveluplife.app/eventai)'
+            description = 'Created by EventAI'
         
         # Apply ICS-compliant formatting for better calendar app rendering
         description = format_ics_description(description)
         event.add('description', description)
+        
+        # Add the EventAI website as a proper URL field instead of in description
+        event.add('url', 'https://leveluplife.app/eventai')
         
         # Parse dates
         try:
@@ -606,6 +592,8 @@ async def api_debug_info():
 async def get_usage_stats(request: Request):
     """Get current user usage statistics"""
     user_id = usage_service.get_user_id(request)
+    # Ensure user exists in BigQuery
+    usage_service.ensure_user_exists(user_id, request)
     usage_check = usage_service.can_convert(user_id)
     
     return UsageResponse(
@@ -623,20 +611,21 @@ async def get_usage_stats(request: Request):
 async def verify_subscription(subscription: SubscriptionRequest, request: Request):
     """Verify and activate subscription (simplified version - implement StoreKit validation in production)"""
     user_id = usage_service.get_user_id(request)
+    # Ensure user exists in BigQuery
+    usage_service.ensure_user_exists(user_id, request)
     
     # TODO: Implement proper App Store receipt validation
-    # For now, we'll simulate successful validation
+    # For now, create subscription in BigQuery
+    subscription_id = bq_service.create_subscription(
+        user_id=user_id,
+        product_id=subscription.product_id,
+        device_id=subscription.device_id,
+        apple_receipt_data=subscription.receipt_data,
+        subscription_days=30
+    )
+    
     expiry_date = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
-    
-    user_subscriptions[user_id] = {
-        "is_active": True,
-        "expiry_date": expiry_date,
-        "product_id": subscription.product_id,
-        "device_id": subscription.device_id,
-        "receipt_data": subscription.receipt_data
-    }
-    
-    print(f"✅ Activated subscription for user {user_id[:8]}... Product: {subscription.product_id}")
+    print(f"✅ Activated subscription {subscription_id} for user {user_id[:8]}... Product: {subscription.product_id}")
     
     return SubscriptionResponse(
         is_premium=True,
@@ -648,14 +637,17 @@ async def verify_subscription(subscription: SubscriptionRequest, request: Reques
 async def get_subscription_status(request: Request):
     """Get current subscription status"""
     user_id = usage_service.get_user_id(request)
+    # Ensure user exists in BigQuery
+    usage_service.ensure_user_exists(user_id, request)
     is_premium = usage_service.is_premium(user_id)
     
     if is_premium:
-        sub = user_subscriptions[user_id]
+        # For now, return basic premium status
+        # TODO: Extend BigQuery service to return subscription details
         return SubscriptionResponse(
             is_premium=True,
-            expiry_date=sub["expiry_date"],
-            product_id=sub["product_id"]
+            expiry_date=None,  # Could be enhanced to return actual expiry
+            product_id="premium_monthly"
         )
     else:
         return SubscriptionResponse(is_premium=False)
@@ -672,16 +664,10 @@ async def convert_to_calendar(
     user_id = usage_service.get_user_id(request)
     is_premium = usage_service.is_premium(user_id)
     
-    # Check if user is trying to use premium-only image feature
-    if image and not is_premium:
-        return CalendarEventResponse(
-            icsContent="",
-            eventsFound=0,
-            message="Photo support is a premium feature. Upgrade to EventAI Premium to analyze images!",
-            events=[],
-            usage=usage_service.can_convert(user_id),
-            requiresPremium=True
-        )
+    # Photo support is now available for all users (free and premium)
+    
+    # Ensure user exists in BigQuery
+    usage_service.ensure_user_exists(user_id, request)
     
     # Check usage limits before processing
     usage_check = usage_service.can_convert(user_id)
@@ -705,11 +691,33 @@ async def convert_to_calendar(
     # Process the request
     result = await process_calendar_request(text, timezone, userLocation, image_data)
     
-    # Increment usage if conversion was successful
+    # Increment usage and log analytics if conversion was successful
     if result.eventsFound > 0:
         usage_service.increment_usage(user_id)
+        
+        # Log conversion event for analytics
+        bq_service.log_conversion_event(
+            user_id=user_id,
+            request_text=text[:200],  # First 200 chars for privacy
+            has_image=bool(image),
+            events_found=result.eventsFound,
+            success=True,
+            timezone_str=timezone,
+            user_location=userLocation
+        )
+        
         updated_usage = usage_service.can_convert(user_id)
         result.usage = updated_usage
+    else:
+        # Log failed conversion
+        bq_service.log_conversion_event(
+            user_id=user_id,
+            request_text=text[:200],
+            has_image=bool(image),
+            events_found=0,
+            success=False,
+            error_message="No events found"
+        )
     
     return result
 
