@@ -57,7 +57,10 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     NavigationLink("🧪 Test") {
-                        SubscriptionTestView()
+                        // TODO: Uncomment when SubscriptionTestView is added to Xcode project
+                        Text("RevenueCat Test Coming Soon")
+                            .padding()
+                        // SubscriptionTestView()
                     }
                     .font(.caption)
                 }

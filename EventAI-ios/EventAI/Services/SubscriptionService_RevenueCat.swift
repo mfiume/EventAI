@@ -13,9 +13,9 @@ class SubscriptionService_RevenueCat: ObservableObject {
     @Published var isLoading = false
     @Published var purchaseError: String?
     
-    // RevenueCat configuration
-    private let apiKey = "YOUR_REVENUECAT_API_KEY" // TODO: Replace with actual key from RevenueCat dashboard
-    private let entitlementIdentifier = "premium"
+    // RevenueCat configuration - using centralized config
+    private let apiKey = RevenueCatConfig.publicAPIKey
+    private let entitlementIdentifier = RevenueCatConfig.premiumEntitlementID
     
     // Store current offerings for price display
     @Published private var currentOffering: Offering?
@@ -31,20 +31,28 @@ class SubscriptionService_RevenueCat: ObservableObject {
     
     // MARK: - RevenueCat Configuration
     private func configureRevenueCat() {
+        // Validate configuration before initializing
+        let configErrors = RevenueCatConfig.validateConfiguration()
+        if !configErrors.isEmpty {
+            print("⚠️ RevenueCat Configuration Issues:")
+            configErrors.forEach { print("   - \($0)") }
+            print("   See RevenueCatConfig.swift for setup instructions")
+        }
+        
         // Configure RevenueCat
         Purchases.configure(withAPIKey: apiKey)
         
-        // Set debug logs for development (disable in production)
-        #if DEBUG
-        Purchases.logLevel = .debug
-        #else
-        Purchases.logLevel = .warn
-        #endif
+        // Set debug logs based on configuration
+        if RevenueCatConfig.enableDebugLogging {
+            Purchases.logLevel = .debug
+        } else {
+            Purchases.logLevel = .warn
+        }
         
         // Set up delegate for subscription updates
         Purchases.shared.delegate = self
         
-        print("✅ RevenueCat configured with API key")
+        print("✅ RevenueCat configured with API key: \(apiKey.prefix(8))...")
     }
     
     // MARK: - Public Interface (matches original SubscriptionService)
