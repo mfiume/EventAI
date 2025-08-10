@@ -253,6 +253,49 @@ class SubscriptionResponse(BaseModel):
     product_id: Optional[str] = None
 
 
+def parse_rfc5545_to_dict(pattern: str) -> Optional[dict]:
+    """Parse RFC 5545 recurrence pattern to dictionary format for icalendar"""
+    try:
+        pattern = pattern.upper().strip()
+        components = pattern.split(';')
+        rrule_dict = {}
+        
+        for component in components:
+            if '=' in component:
+                key, value = component.split('=', 1)
+                key = key.strip()
+                value = value.strip()
+                
+                if key == 'FREQ':
+                    rrule_dict['freq'] = value
+                elif key == 'INTERVAL':
+                    rrule_dict['interval'] = int(value)
+                elif key == 'BYDAY':
+                    rrule_dict['byday'] = value
+                elif key == 'BYMONTHDAY':
+                    rrule_dict['bymonthday'] = value
+                elif key == 'BYMONTH':
+                    rrule_dict['bymonth'] = value
+                elif key == 'COUNT':
+                    rrule_dict['count'] = int(value)
+                elif key == 'UNTIL':
+                    # Parse UNTIL date
+                    try:
+                        if 'T' in value:
+                            until_date = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                        else:
+                            until_date = datetime.strptime(value, '%Y%m%d')
+                        rrule_dict['until'] = until_date
+                    except:
+                        print(f"⚠️ Could not parse UNTIL date: {value}")
+        
+        print(f"🔄 Parsed RFC 5545 '{pattern}' to: {rrule_dict}")
+        return rrule_dict if rrule_dict else None
+        
+    except Exception as e:
+        print(f"❌ Error parsing RFC 5545 pattern '{pattern}': {e}")
+        return None
+
 def convert_recurrence_pattern_to_rrule(pattern: str) -> Optional[dict]:
     """Convert natural language recurrence pattern to RRULE dictionary"""
     pattern = pattern.lower().strip()
@@ -504,10 +547,24 @@ def create_calendar_from_events(events_data: list, timezone_str: str = "UTC") ->
             
         # Add recurrence rule if this is a recurring event
         if event_data.get('is_recurring') and event_data.get('recurrence_pattern'):
-            # Convert natural language recurrence pattern to RRULE
-            rrule = convert_recurrence_pattern_to_rrule(event_data['recurrence_pattern'])
-            if rrule:
-                event.add('rrule', rrule)
+            pattern = event_data['recurrence_pattern']
+            print(f"🔄 Processing recurrence pattern: {pattern}")
+            
+            # Check if it's already RFC 5545 format (FREQ=...) or natural language
+            if pattern.upper().startswith('FREQ='):
+                # It's already RFC 5545 format - parse it to dictionary
+                rrule_dict = parse_rfc5545_to_dict(pattern)
+                print(f"🔄 Parsed RFC 5545 pattern to dict: {rrule_dict}")
+                if rrule_dict:
+                    event.add('rrule', rrule_dict)
+                    print(f"✅ Added RRULE to ICS: {rrule_dict}")
+            else:
+                # It's natural language - convert to RRULE
+                rrule = convert_recurrence_pattern_to_rrule(pattern)
+                print(f"🔄 Converted natural language to RRULE: {rrule}")
+                if rrule:
+                    event.add('rrule', rrule)
+                    print(f"✅ Added RRULE to ICS: {rrule}")
             
         cal.add_component(event)
     

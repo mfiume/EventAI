@@ -121,12 +121,122 @@ class CalendarService: ObservableObject {
                 event.location = location
             }
             
+            // Apply recurrence rule if present
+            if let rruleString = eventData.recurrenceRule {
+                if let ekRecurrenceRule = parseRRULE(rruleString) {
+                    event.addRecurrenceRule(ekRecurrenceRule)
+                    print("🔄 Applied recurrence rule: \(rruleString)")
+                } else {
+                    print("❌ Failed to parse recurrence rule: \(rruleString)")
+                }
+            }
+            
+            // Apply additional ICS properties to EKEvent
+            if let url = eventData.url {
+                event.url = url
+            }
+            
+            // Map ICS status to EKEvent availability
+            if let status = eventData.status?.uppercased() {
+                switch status {
+                case "TENTATIVE":
+                    event.availability = .tentative
+                case "CONFIRMED":
+                    event.availability = .busy
+                case "CANCELLED":
+                    event.availability = .free
+                default:
+                    event.availability = .busy // Default to busy
+                }
+            }
+            
+            // Add priority and categories to notes since EKEvent doesn't support them directly
+            var additionalNotes: [String] = []
+            
+            if let priority = eventData.priority {
+                additionalNotes.append("Priority: \(priority)")
+            }
+            
+            if !eventData.categories.isEmpty {
+                let categoriesText = eventData.categories.joined(separator: ", ")
+                additionalNotes.append("Categories: \(categoriesText)")
+            }
+            
+            if let organizer = eventData.organizer {
+                additionalNotes.append("Organizer: \(organizer)")
+            }
+            
+            if !eventData.attendees.isEmpty {
+                let attendeesList = eventData.attendees.joined(separator: ", ")
+                additionalNotes.append("Attendees: \(attendeesList)")
+            }
+            
+            // Append additional info to notes
+            if !additionalNotes.isEmpty {
+                let additionalText = additionalNotes.joined(separator: "\n")
+                if let existingNotes = event.notes {
+                    event.notes = "\(existingNotes)\n\n\(additionalText)"
+                } else {
+                    event.notes = additionalText
+                }
+            }
+            
+            // DEBUG: Output complete event details before adding to calendar
+            print("🔍 DEBUG - COMPLETE EVENT DETAILS BEFORE ADDING TO CALENDAR:")
+            print(String(repeating: "=", count: 80))
+            print("📝 Title: \(event.title ?? "nil")")
+            print("📄 Notes: \(event.notes ?? "nil")")
+            print("📍 Location: \(event.location ?? "nil")")
+            print("⏰ Start Date: \(event.startDate)")
+            print("⏰ End Date: \(event.endDate)")
+            print("🌍 Timezone: \(event.timeZone?.identifier ?? "nil")")
+            print("🔗 URL: \(event.url?.absoluteString ?? "nil")")
+            print("📊 Availability: \(event.availability.rawValue)")
+            print("📅 Calendar: \(event.calendar?.title ?? "nil")")
+            
+            // DEBUG: Show recurrence rules
+            if let recurrenceRules = event.recurrenceRules, !recurrenceRules.isEmpty {
+                print("🔄 RECURRENCE RULES (\(recurrenceRules.count)):")
+                for (index, rule) in recurrenceRules.enumerated() {
+                    print("  [\(index + 1)] Frequency: \(rule.frequency.rawValue)")
+                    print("  [\(index + 1)] Interval: \(rule.interval)")
+                    print("  [\(index + 1)] Days of Week: \(rule.daysOfTheWeek?.map { $0.dayOfTheWeek.rawValue } ?? [])")
+                    print("  [\(index + 1)] End: \(rule.recurrenceEnd?.description ?? "nil")")
+                }
+            } else {
+                print("❌ NO RECURRENCE RULES FOUND!")
+            }
+            
+            // DEBUG: Show original ICS data for comparison
+            print("🗂️ ORIGINAL ICS DATA:")
+            print("  RRULE: \(eventData.recurrenceRule ?? "nil")")
+            print("  UID: \(eventData.uid ?? "nil")")
+            print("  Priority: \(eventData.priority ?? 0)")
+            print("  Status: \(eventData.status ?? "nil")")
+            print("  Categories: \(eventData.categories.joined(separator: ", "))")
+            print("  Organizer: \(eventData.organizer ?? "nil")")
+            print("  Attendees: \(eventData.attendees.joined(separator: ", "))")
+            print(String(repeating: "=", count: 80))
+            
             print("📅 Adding event '\(eventData.title)' at \(eventData.startDate) (TZ: \(event.timeZone?.identifier ?? "nil"))")
             
             do {
                 try eventStore.save(event, span: .thisEvent)
                 successCount += 1
                 print("✅ Added event: \(event.title ?? "Unknown") successfully")
+                
+                // DEBUG: Verify the event was saved with recurrence rules
+                if let savedEvent = eventStore.event(withIdentifier: event.eventIdentifier ?? "") {
+                    print("🔍 VERIFICATION - Event saved successfully:")
+                    print("  Recurrence rules count: \(savedEvent.recurrenceRules?.count ?? 0)")
+                    if let rules = savedEvent.recurrenceRules {
+                        for (index, rule) in rules.enumerated() {
+                            print("  Saved rule [\(index + 1)]: FREQ=\(rule.frequency.rawValue), INTERVAL=\(rule.interval)")
+                        }
+                    }
+                } else {
+                    print("⚠️ Could not retrieve saved event for verification")
+                }
             } catch {
                 errors.append(error)
                 print("❌ Failed to add event: \(event.title ?? "Unknown") - \(error.localizedDescription)")
@@ -148,8 +258,16 @@ class CalendarService: ObservableObject {
         print(icsContent)
         print(String(repeating: "=", count: 80))
         
+        // DEBUG: Also output each line as it's parsed
+        print("🔍 DEBUG: Line-by-line ICS parsing:")
+        
         for line in lines {
             let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // DEBUG: Print each significant line
+            if !trimmedLine.isEmpty && !trimmedLine.hasPrefix("BEGIN:VCALENDAR") && !trimmedLine.hasPrefix("VERSION") && !trimmedLine.hasPrefix("PRODID") && !trimmedLine.hasPrefix("END:VCALENDAR") {
+                print("  📋 Line: \(trimmedLine)")
+            }
             
             if trimmedLine.hasPrefix("BEGIN:VEVENT") {
                 currentEvent = EventData()
@@ -190,6 +308,44 @@ class CalendarService: ObservableObject {
                     
                     event.endDate = parseICSDate(dateString, timezone: timezone) ?? Date().addingTimeInterval(3600)
                     print("⏰ End: \(dateString) -> \(event.endDate) (Event TZ: \(userTimezone.identifier))")
+                } else if trimmedLine.hasPrefix("RRULE:") {
+                    event.recurrenceRule = String(trimmedLine.dropFirst(6))
+                    print("🔄 Recurrence Rule: \(event.recurrenceRule ?? "")")
+                } else if trimmedLine.hasPrefix("UID:") {
+                    event.uid = String(trimmedLine.dropFirst(4))
+                    print("🆔 UID: \(event.uid ?? "")")
+                } else if trimmedLine.hasPrefix("URL:") {
+                    event.url = URL(string: String(trimmedLine.dropFirst(4)))
+                    print("🔗 URL: \(event.url?.absoluteString ?? "")")
+                } else if trimmedLine.hasPrefix("ORGANIZER") {
+                    // Handle ORGANIZER with or without parameters like "ORGANIZER;CN=John Doe:mailto:john@example.com"
+                    if let colonIndex = trimmedLine.firstIndex(of: ":") {
+                        event.organizer = String(trimmedLine[trimmedLine.index(after: colonIndex)...])
+                        print("👤 Organizer: \(event.organizer ?? "")")
+                    }
+                } else if trimmedLine.hasPrefix("ATTENDEE") {
+                    // Handle ATTENDEE with parameters like "ATTENDEE;CN=Jane Doe:mailto:jane@example.com"
+                    if let colonIndex = trimmedLine.firstIndex(of: ":") {
+                        let attendee = String(trimmedLine[trimmedLine.index(after: colonIndex)...])
+                        event.attendees.append(attendee)
+                        print("👥 Attendee: \(attendee)")
+                    }
+                } else if trimmedLine.hasPrefix("CATEGORIES:") {
+                    let categoryString = String(trimmedLine.dropFirst(11))
+                    event.categories = categoryString.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    print("🏷️ Categories: \(event.categories.joined(separator: ", "))")
+                } else if trimmedLine.hasPrefix("PRIORITY:") {
+                    event.priority = Int(String(trimmedLine.dropFirst(9)))
+                    print("⚡ Priority: \(event.priority ?? 0)")
+                } else if trimmedLine.hasPrefix("STATUS:") {
+                    event.status = String(trimmedLine.dropFirst(7))
+                    print("📊 Status: \(event.status ?? "")")
+                } else if trimmedLine.hasPrefix("TRANSP:") {
+                    event.transparency = String(trimmedLine.dropFirst(7))
+                    print("👻 Transparency: \(event.transparency ?? "")")
+                } else if trimmedLine.hasPrefix("CLASS:") {
+                    event.classification = String(trimmedLine.dropFirst(6))
+                    print("🔒 Classification: \(event.classification ?? "")")
                 }
             }
         }
@@ -274,6 +430,109 @@ class CalendarService: ObservableObject {
         return formatter
     }
     
+    private func parseRRULE(_ rruleString: String) -> EKRecurrenceRule? {
+        // Parse RFC 5545 RRULE into EKRecurrenceRule
+        // Example: "FREQ=MONTHLY;INTERVAL=6" or "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+        
+        let components = rruleString.components(separatedBy: ";")
+        var frequency: EKRecurrenceFrequency?
+        var interval = 1
+        var daysOfWeek: [EKRecurrenceDayOfWeek] = []
+        var end: EKRecurrenceEnd?
+        
+        for component in components {
+            let trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            
+            if trimmed.hasPrefix("FREQ=") {
+                let freqValue = String(trimmed.dropFirst(5))
+                switch freqValue {
+                case "DAILY":
+                    frequency = .daily
+                case "WEEKLY":
+                    frequency = .weekly
+                case "MONTHLY":
+                    frequency = .monthly
+                case "YEARLY":
+                    frequency = .yearly
+                default:
+                    print("❌ Unsupported frequency: \(freqValue)")
+                    return nil
+                }
+            } else if trimmed.hasPrefix("INTERVAL=") {
+                if let intervalValue = Int(String(trimmed.dropFirst(9))) {
+                    interval = intervalValue
+                }
+            } else if trimmed.hasPrefix("BYDAY=") {
+                let dayString = String(trimmed.dropFirst(6))
+                daysOfWeek = parseByDay(dayString)
+            } else if trimmed.hasPrefix("COUNT=") {
+                if let count = Int(String(trimmed.dropFirst(6))) {
+                    end = EKRecurrenceEnd(occurrenceCount: count)
+                }
+            } else if trimmed.hasPrefix("UNTIL=") {
+                let untilString = String(trimmed.dropFirst(6))
+                if let untilDate = parseICSDate(untilString, timezone: nil) {
+                    end = EKRecurrenceEnd(end: untilDate)
+                }
+            }
+        }
+        
+        guard let freq = frequency else {
+            print("❌ No valid frequency found in RRULE: \(rruleString)")
+            return nil
+        }
+        
+        // Create the EKRecurrenceRule
+        let recurrenceRule = EKRecurrenceRule(
+            recurrenceWith: freq,
+            interval: interval,
+            daysOfTheWeek: daysOfWeek.isEmpty ? nil : daysOfWeek,
+            daysOfTheMonth: nil, // We could add support for BYMONTHDAY later
+            monthsOfTheYear: nil, // We could add support for BYMONTH later
+            weeksOfTheYear: nil,
+            daysOfTheYear: nil,
+            setPositions: nil,
+            end: end
+        )
+        
+        return recurrenceRule
+    }
+    
+    private func parseByDay(_ byDayString: String) -> [EKRecurrenceDayOfWeek] {
+        // Parse BYDAY values like "MO,WE,FR" or "1MO,-1FR"
+        let dayMapping: [String: EKWeekday] = [
+            "MO": .monday, "TU": .tuesday, "WE": .wednesday, "TH": .thursday,
+            "FR": .friday, "SA": .saturday, "SU": .sunday
+        ]
+        
+        let days = byDayString.components(separatedBy: ",")
+        var result: [EKRecurrenceDayOfWeek] = []
+        
+        for day in days {
+            let trimmed = day.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            
+            // Check if it has a position indicator (like 1MO, -1FR)
+            if trimmed.count > 2 {
+                // Extract position (number) and day code
+                let dayCode = String(trimmed.suffix(2))
+                let positionStr = String(trimmed.dropLast(2))
+                
+                if let weekday = dayMapping[dayCode], let weekNumber = Int(positionStr) {
+                    let dayOfWeek = EKRecurrenceDayOfWeek(dayOfTheWeek: weekday, weekNumber: weekNumber)
+                    result.append(dayOfWeek)
+                }
+            } else {
+                // Just a day code (like MO, TU)
+                if let weekday = dayMapping[trimmed] {
+                    let dayOfWeek = EKRecurrenceDayOfWeek(weekday)
+                    result.append(dayOfWeek)
+                }
+            }
+        }
+        
+        return result
+    }
+    
 }
 
 class EventData {
@@ -283,4 +542,15 @@ class EventData {
     var startDate: Date = Date()
     var endDate: Date = Date().addingTimeInterval(3600)
     var timeZone: TimeZone?
+    var recurrenceRule: String? // Store the raw RRULE string
+    var uid: String? // Unique identifier
+    var url: URL? // Event URL
+    var organizer: String? // Event organizer
+    var attendees: [String] = [] // List of attendees
+    var categories: [String] = [] // Event categories/tags
+    var priority: Int? // Event priority (0-9)
+    var status: String? // Event status (TENTATIVE, CONFIRMED, CANCELLED)
+    var transparency: String? // TRANSPARENT or OPAQUE
+    var classification: String? // PUBLIC, PRIVATE, CONFIDENTIAL
+    var alarm: String? // VALARM data
 }
