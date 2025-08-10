@@ -1,0 +1,9 @@
+// Configuration file template for EventAI
+// Copy this to Config.xcconfig and replace with your actual values
+// Config.xcconfig is gitignored for security
+
+// RevenueCat Configuration
+REVENUECAT_API_KEY = appl_your_revenuecat_api_key_here
+
+// Backend Configuration  
+BACKEND_BASE_URL = https:/$()/eventai.leveluplife.app/api
