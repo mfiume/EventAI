@@ -1732,13 +1732,8 @@ struct UsageIndicatorView: View {
             
             if isLoading {
                 // Loading spinner
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text("Loading...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                ProgressView()
+                    .scaleEffect(0.8)
             } else {
                 Text("\(remaining) of \(dailyLimit) remaining")
                     .font(.caption)
