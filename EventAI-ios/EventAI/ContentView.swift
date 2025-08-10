@@ -9,12 +9,13 @@ struct ContentView: View {
     @State private var alertMessage = ""
     @State private var showAdBanner = true
     @State private var selectedTimezone = TimeZone.current
-    @State private var useLocationForTimezone = false
+    @State private var useLocationForTimezone = false // TEMPORARILY DISABLED for AI address testing
     @State private var showEventPreview = false
     @State private var currentEvents: [ParsedEvent] = []
     @State private var currentICSContent = ""
     @State private var dailyConversionsUsed = 0
     @State private var dailyLimit = 3
+    @State private var premiumDailyLimit = 20
     @State private var canConvert = true
     @State private var selectedImage: UIImage?
     @State private var showingImagePicker = false
@@ -126,19 +127,32 @@ struct ContentView: View {
                                     .font(.system(size: 80))
                                     .foregroundColor(.blue)
                                 
-                                Text("Get more conversions, remove ads, and add photos to provide context for your events.")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(4)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                VStack(spacing: 8) {
+                                    Text("Get more conversions, remove ads, and add photos to provide context for your events.")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .lineLimit(4)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    
+                                    // Show upgrade comparison if user is on free tier
+                                    if !subscriptionService.isPremium && dailyLimit > 0 && premiumDailyLimit > dailyLimit {
+                                        Text("Upgrade from \(dailyLimit) to \(premiumDailyLimit) daily conversions")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.blue)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 4)
+                                            .background(Color.blue.opacity(0.1))
+                                            .cornerRadius(8)
+                                    }
+                                }
                                 
                                 VStack(spacing: 12) {
                                     HStack(spacing: 12) {
                                         Image(systemName: "checkmark.circle.fill")
                                             .font(.system(size: 16))
                                             .foregroundColor(.green)
-                                        Text("More Conversions (20 Per Day)")
+                                        Text("More Conversions (\(premiumDailyLimit) Per Day)")
                                             .font(.system(size: 16))
                                             .foregroundColor(.primary)
                                         Spacer()
@@ -258,7 +272,9 @@ struct ContentView: View {
                                 .padding(8)
                         }
                         
-                        // Location services toggle button
+                        // Location services toggle button - TEMPORARILY HIDDEN for AI address testing
+                        // TODO: Re-enable after testing AI's address finding capabilities
+                        /*
                         Button(action: {
                             useLocationForTimezone.toggle()
                             // Remove focus and dismiss keyboard when toggle changes
@@ -272,6 +288,7 @@ struct ContentView: View {
                                 .foregroundColor(useLocationForTimezone ? .blue : .gray.opacity(0.7))
                                 .padding(8)
                         }
+                        */
                         
                         // Timezone display (always show)
                         NavigationLink(destination: TimezonePickerView(selectedTimezone: $selectedTimezone)) {
@@ -391,10 +408,11 @@ struct ContentView: View {
                             onTap: { inputText = "Weekly team meeting every Monday 9-10 AM" }
                         )
                         
+                        // Temporary replacement example (location example hidden during AI address testing)
                         ExampleButton(
-                            icon: "location",
-                            text: "Lunch with Sarah next Friday at Italian restaurant",
-                            onTap: { inputText = "Lunch with Sarah next Friday at Italian restaurant" }
+                            icon: "phone",
+                            text: "Video call with Sarah next Friday 1-2 PM",
+                            onTap: { inputText = "Video call with Sarah next Friday 1-2 PM" }
                         )
                     }
                 }
@@ -451,14 +469,24 @@ struct ContentView: View {
     
     @MainActor
     private func loadUsageFromBackend() async {
-        guard !subscriptionService.isPremium else { return }
-        
         do {
             let usageResponse = try await apiService.getUsageStats()
             dailyConversionsUsed = usageResponse.count
             dailyLimit = usageResponse.limit
             canConvert = usageResponse.canConvert
-            print("📊 Usage loaded: \(usageResponse.remaining) of \(usageResponse.limit) remaining")
+            
+            // For premium modal, we need both current limit and premium limit
+            // If user is currently premium, they already have the premium limit
+            // If user is free, we need to show what premium limit would be
+            if subscriptionService.isPremium {
+                premiumDailyLimit = usageResponse.limit // They already have premium limit
+            } else {
+                // For free users, premium limit should be higher than their current limit
+                // We can infer this from the API structure or use a reasonable premium amount
+                premiumDailyLimit = usageResponse.limit < 100 ? 20 : 200 // Handle testing vs production
+            }
+            
+            print("📊 Usage loaded: \(usageResponse.remaining) of \(usageResponse.limit) remaining, premium would be \(premiumDailyLimit)")
         } catch {
             print("❌ Failed to load usage: \(error)")
             // Keep existing stats on error
@@ -1153,10 +1181,120 @@ struct EventCard: View {
         }
     }
     
+    private func parseRFC5545Recurrence(_ pattern: String) -> String {
+        // Parse RFC 5545 iCalendar recurrence patterns like "FREQ=MONTHLY;INTERVAL=6"
+        let components = pattern.components(separatedBy: ";")
+        var freq: String?
+        var interval = 1 // Default interval is 1
+        var byDay: String?
+        
+        for component in components {
+            let trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("freq=") {
+                freq = String(trimmed.dropFirst(5))
+            } else if trimmed.hasPrefix("interval=") {
+                if let intervalValue = Int(String(trimmed.dropFirst(9))) {
+                    interval = intervalValue
+                }
+            } else if trimmed.hasPrefix("byday=") {
+                byDay = String(trimmed.dropFirst(6))
+            }
+        }
+        
+        guard let frequency = freq else {
+            return "Recurs regularly"
+        }
+        
+        return formatRecurrenceDescription(freq: frequency, interval: interval, byDay: byDay)
+    }
+    
+    private func formatRecurrenceDescription(freq: String, interval: Int, byDay: String?) -> String {
+        let freqLower = freq.lowercased()
+        
+        switch freqLower {
+        case "daily":
+            if interval == 1 {
+                return "Recurs daily"
+            } else {
+                return "Recurs every \(interval) days"
+            }
+        case "weekly":
+            if let byDay = byDay {
+                let dayNames = parseDayNames(byDay)
+                if interval == 1 {
+                    return dayNames.count == 1 ? "Recurs weekly on \(dayNames[0])" : "Recurs weekly on \(dayNames.joined(separator: ", "))"
+                } else {
+                    return dayNames.count == 1 ? "Recurs every \(interval) weeks on \(dayNames[0])" : "Recurs every \(interval) weeks on \(dayNames.joined(separator: ", "))"
+                }
+            } else {
+                return interval == 1 ? "Recurs weekly" : "Recurs every \(interval) weeks"
+            }
+        case "monthly":
+            if interval == 1 {
+                return "Recurs monthly"
+            } else {
+                return "Recurs every \(interval) months"
+            }
+        case "yearly":
+            if interval == 1 {
+                return "Recurs yearly"
+            } else {
+                return "Recurs every \(interval) years"
+            }
+        case "hourly":
+            if interval == 1 {
+                return "Recurs hourly"
+            } else {
+                return "Recurs every \(interval) hours"
+            }
+        case "minutely":
+            if interval == 1 {
+                return "Recurs every minute"
+            } else {
+                return "Recurs every \(interval) minutes"
+            }
+        case "secondly":
+            if interval == 1 {
+                return "Recurs every second"
+            } else {
+                return "Recurs every \(interval) seconds"
+            }
+        default:
+            return interval == 1 ? "Recurs \(freq)" : "Recurs every \(interval) \(freq.lowercased())"
+        }
+    }
+    
+    private func parseDayNames(_ byDay: String) -> [String] {
+        // Parse BYDAY values like "MO,WE,FR" or "1MO,-1FR"
+        let dayMapping: [String: String] = [
+            "mo": "Mon", "tu": "Tue", "we": "Wed", "th": "Thu",
+            "fr": "Fri", "sa": "Sat", "su": "Sun"
+        ]
+        
+        let days = byDay.lowercased().components(separatedBy: ",")
+        var result: [String] = []
+        
+        for day in days {
+            let trimmed = day.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Remove any position indicators (1MO, -1FR, etc.) and just get the day
+            let dayCode = String(trimmed.suffix(2))
+            if let dayName = dayMapping[dayCode] {
+                result.append(dayName)
+            }
+        }
+        
+        return result
+    }
+    
     private func formatComprehensiveRecurrence(_ pattern: String?) -> String {
         guard let pattern = pattern?.lowercased() else { return "Recurs regularly" }
         
-        // Handle ICS-style patterns with more comprehensive detection
+        // Parse RFC 5545 iCalendar recurrence rules (FREQ=...; INTERVAL=...)
+        if pattern.contains("freq=") {
+            return parseRFC5545Recurrence(pattern)
+        }
+        
+        // Handle natural language patterns
         if pattern.contains("daily") || pattern.contains("every day") {
             return "Recurs daily"
         } else if pattern.contains("weekdays") || pattern.contains("monday through friday") {
@@ -1188,14 +1326,6 @@ struct EventCard: View {
             return "Recurs bi-weekly"
         } else if pattern.contains("every") && pattern.contains("hour") {
             return "Recurs hourly"
-        } else if pattern.contains("freq=daily") {
-            return "Recurs daily"
-        } else if pattern.contains("freq=weekly") {
-            return "Recurs weekly"
-        } else if pattern.contains("freq=monthly") {
-            return "Recurs monthly"
-        } else if pattern.contains("freq=yearly") {
-            return "Recurs yearly"
         } else {
             // Check for multiple days pattern
             let days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]

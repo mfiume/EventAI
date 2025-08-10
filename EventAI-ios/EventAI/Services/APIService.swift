@@ -59,20 +59,17 @@ struct ParsedEvent: Codable, Identifiable {
         // Try multiple date formats
         let isoFormatter = ISO8601DateFormatter()
         if let date = isoFormatter.date(from: startDate) {
-            print("📅 Parsed start date with ISO: \(startDate) -> \(date)")
             return date
         }
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         if let date = dateFormatter.date(from: startDate) {
-            print("📅 Parsed start date with custom format: \(startDate) -> \(date)")
             return date
         }
         
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         if let date = dateFormatter.date(from: startDate) {
-            print("📅 Parsed start date with space format: \(startDate) -> \(date)")
             return date
         }
         
@@ -86,20 +83,17 @@ struct ParsedEvent: Codable, Identifiable {
         // Try multiple date formats
         let isoFormatter = ISO8601DateFormatter()
         if let date = isoFormatter.date(from: endDate) {
-            print("📅 Parsed end date with ISO: \(endDate) -> \(date)")
             return date
         }
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         if let date = dateFormatter.date(from: endDate) {
-            print("📅 Parsed end date with custom format: \(endDate) -> \(date)")
             return date
         }
         
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         if let date = dateFormatter.date(from: endDate) {
-            print("📅 Parsed end date with space format: \(endDate) -> \(date)")
             return date
         }
         

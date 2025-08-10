@@ -390,6 +390,36 @@ def infer_timezone_from_location(location_string: str) -> Optional[str]:
         print(f"Warning: Could not infer timezone from location '{location_string}': {e}")
         return None
 
+def format_ics_description(description: str) -> str:
+    """Format description for better Apple Calendar and ICS compliance"""
+    if not description:
+        return description
+    
+    # Replace various newline formats with proper ICS line breaks
+    description = description.replace('\\n\\n', '\n\n')  # Handle escaped double newlines
+    description = description.replace('\\n', '\n')       # Handle escaped single newlines
+    
+    # For Apple Calendar, use specific formatting that renders better:
+    # - Double line breaks for paragraph separation
+    # - Clean up extra whitespace
+    lines = description.split('\n')
+    formatted_lines = []
+    
+    for i, line in enumerate(lines):
+        line = line.strip()
+        if line:  # Non-empty line
+            formatted_lines.append(line)
+        elif i > 0 and formatted_lines and not formatted_lines[-1] == '':
+            # Add empty line for paragraph break (but avoid consecutive empty lines)
+            formatted_lines.append('')
+    
+    # Join with single newlines - most calendar apps handle this better than double newlines
+    formatted_desc = '\n'.join(formatted_lines)
+    
+    # ICS spec: Lines should not exceed 75 octets, but most modern calendar apps handle longer lines
+    # We'll keep it simple and let the icalendar library handle proper folding
+    return formatted_desc
+
 def create_calendar_from_events(events_data: list, timezone_str: str = "UTC") -> str:
     """Create an ICS calendar file from parsed events"""
     cal = Calendar()
@@ -409,11 +439,15 @@ def create_calendar_from_events(events_data: list, timezone_str: str = "UTC") ->
         event.add('uid', str(uuid.uuid4()))
         event.add('summary', event_data['title'])
         
-        # Add EventAI attribution to description
+        # Add EventAI attribution to description with proper formatting for Apple Calendar
         description = event_data.get('description') or ''
         if description:
-            description += '\n\n'
-        description += 'Created by EventAI (https://leveluplife.app/eventai)'
+            description = description + '\n\nCreated by EventAI (https://leveluplife.app/eventai)'
+        else:
+            description = 'Created by EventAI (https://leveluplife.app/eventai)'
+        
+        # Apply ICS-compliant formatting for better calendar app rendering
+        description = format_ics_description(description)
         event.add('description', description)
         
         # Parse dates
