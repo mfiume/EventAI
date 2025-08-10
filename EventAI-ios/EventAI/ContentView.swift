@@ -1731,12 +1731,13 @@ struct UsageIndicatorView: View {
                 .foregroundColor(.secondary)
             
             if isLoading {
-                // Skeleton loader
-                HStack(spacing: 4) {
-                    SkeletonBox(width: 60, height: 16)
-                    Text("remaining")
+                // Loading spinner
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Loading...")
                         .font(.caption)
-                        .foregroundColor(.secondary.opacity(0.6))
+                        .foregroundColor(.secondary)
                 }
             } else {
                 Text("\(remaining) of \(dailyLimit) remaining")
@@ -1768,38 +1769,6 @@ struct UsageIndicatorView: View {
     }
 }
 
-// MARK: - Skeleton Loader Components
-struct SkeletonBox: View {
-    let width: CGFloat
-    let height: CGFloat
-    @State private var isShimmering = false
-    
-    var body: some View {
-        Rectangle()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.gray.opacity(0.3),
-                        Color.gray.opacity(0.1),
-                        Color.gray.opacity(0.3)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .frame(width: width, height: height)
-            .cornerRadius(4)
-            .offset(x: isShimmering ? 200 : -200)
-            .clipped()
-            .animation(
-                Animation.linear(duration: 1.5).repeatForever(autoreverses: false),
-                value: isShimmering
-            )
-            .onAppear {
-                isShimmering = true
-            }
-    }
-}
 
 // MARK: - Banner Ad View
 struct BannerAdView: View {
