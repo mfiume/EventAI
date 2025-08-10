@@ -107,7 +107,7 @@ self.baseURL = "https://eventai.leveluplife.app/api"
 ### **Freemium Features**
 - **Free**: 3 daily conversions + interstitial ads
 - **Premium**: 20 daily conversions + no ads + photo analysis
-- **Subscription**: $4.99/month via StoreKit 2
+- **Subscription**: $0.99/month via StoreKit 2 and RevenueCat
 
 ### **Usage Tracking Flow**
 1. App calls `/usage` to get current limits

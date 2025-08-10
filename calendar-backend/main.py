@@ -62,8 +62,8 @@ else:
 bq_service = get_bigquery_service()
 
 # Usage limits (temporarily increased for testing - change back for production)
-FREE_DAILY_LIMIT = 100  # TODO: Change back to 3 for production
-PREMIUM_DAILY_LIMIT = 200  # TODO: Change back to 20 for production
+FREE_DAILY_LIMIT = 2  # Production: 2 free conversions per day
+PREMIUM_DAILY_LIMIT = 20  # Production: 20 premium conversions per day
 
 # Reset configuration
 RESET_TIMEZONE = "America/New_York"  # Eastern Time
