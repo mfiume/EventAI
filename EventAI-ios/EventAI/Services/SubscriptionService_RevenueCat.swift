@@ -1,11 +1,12 @@
 import Foundation
 import RevenueCat
 import RevenueCatUI
+import UIKit
 
 /// RevenueCat-powered subscription service that maintains the same interface as the original SubscriptionService
 /// This allows for easy A/B testing and switching between StoreKit and RevenueCat implementations
 @MainActor
-class SubscriptionService_RevenueCat: ObservableObject {
+class SubscriptionService_RevenueCat: NSObject, ObservableObject {
     // Published properties - same interface as original SubscriptionService
     @Published var isPremium = false
     @Published var subscriptionStatus: String = "Free"
@@ -20,7 +21,8 @@ class SubscriptionService_RevenueCat: ObservableObject {
     // Store current offerings for price display
     @Published private var currentOffering: Offering?
     
-    init() {
+    override init() {
+        super.init()
         print("🔧 Initializing RevenueCat SubscriptionService...")
         configureRevenueCat()
         Task {
@@ -75,7 +77,7 @@ class SubscriptionService_RevenueCat: ObservableObject {
                 return
             }
             
-            print("📦 Purchasing package: \(monthlyPackage.storeProduct.displayName) - \(monthlyPackage.storeProduct.displayPrice)")
+            print("📦 Purchasing package: \(monthlyPackage.storeProduct.localizedTitle) - \(monthlyPackage.storeProduct.localizedPriceString)")
             
             // Perform the purchase
             let (_, customerInfo, _) = try await Purchases.shared.purchase(package: monthlyPackage)
@@ -136,7 +138,7 @@ class SubscriptionService_RevenueCat: ObservableObject {
     // Price string property - matches original interface
     var monthlyPriceString: String {
         if let monthlyPackage = currentOffering?.monthly {
-            return monthlyPackage.storeProduct.displayPrice
+            return monthlyPackage.storeProduct.localizedPriceString
         }
         return "$4.99" // Fallback price
     }
@@ -209,7 +211,7 @@ class SubscriptionService_RevenueCat: ObservableObject {
             currentOffering = offerings.current
             
             if let monthlyPackage = currentOffering?.monthly {
-                print("💰 Monthly subscription loaded: \(monthlyPackage.storeProduct.displayName) - \(monthlyPackage.storeProduct.displayPrice)")
+                print("💰 Monthly subscription loaded: \(monthlyPackage.storeProduct.localizedTitle) - \(monthlyPackage.storeProduct.localizedPriceString)")
             } else {
                 print("⚠️ No monthly subscription package found in offerings")
             }
@@ -239,34 +241,22 @@ class SubscriptionService_RevenueCat: ObservableObject {
     }
     
     private func handleRevenueCatError(_ error: ErrorCode) {
-        switch error {
-        case .userCancelledError:
+        print("❌ RevenueCat error: \(error)")
+        
+        // Handle the most common cases - use string matching to avoid enum naming issues
+        let errorDescription = error.localizedDescription.lowercased()
+        
+        if errorDescription.contains("cancel") {
             print("👤 User cancelled purchase")
-            // Don't show error message for user cancellation
-            break
-            
-        case .paymentPendingError:
-            print("⏳ Payment pending approval")
+            // Don't set purchaseError for user cancellation
+            return
+        } else if errorDescription.contains("pending") {
             purchaseError = "Purchase is pending approval"
-            
-        case .purchaseNotAllowedError:
-            print("🚫 Purchases not allowed")
+        } else if errorDescription.contains("not allowed") {
             purchaseError = "Purchases are not allowed on this device"
-            
-        case .purchaseInvalidError:
-            print("❌ Invalid purchase")
-            purchaseError = "Purchase failed - invalid product"
-            
-        case .networkError:
-            print("🌐 Network error")
+        } else if errorDescription.contains("network") {
             purchaseError = "Network error - please check your connection and try again"
-            
-        case .receiptAlreadyInUseError:
-            print("🔄 Receipt already in use")
-            purchaseError = "This purchase is already associated with another account"
-            
-        default:
-            print("❌ Other RevenueCat error: \(error)")
+        } else {
             purchaseError = "Purchase failed: \(error.localizedDescription)"
         }
     }

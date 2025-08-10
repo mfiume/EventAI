@@ -1,9 +1,10 @@
 import Foundation
 import RevenueCat
 import RevenueCatUI
+import UIKit
 
 @MainActor
-class RevenueCatService: ObservableObject {
+class RevenueCatService: NSObject, ObservableObject {
     @Published var isPremium = false
     @Published var subscriptionStatus: String = "Free"
     @Published var expiryDate: Date?
@@ -15,7 +16,8 @@ class RevenueCatService: ObservableObject {
     private let entitlementIdentifier = "premium"
     private let monthlyProductIdentifier = "eventai_premium_monthly"
     
-    init() {
+    override init() {
+        super.init()
         print("🔧 Initializing RevenueCat service...")
         configureRevenueCat()
         Task {
@@ -107,7 +109,7 @@ class RevenueCatService: ObservableObject {
                 return
             }
             
-            print("📦 Found monthly package: \(monthlyPackage.storeProduct.displayName) - \(monthlyPackage.storeProduct.displayPrice)")
+            print("📦 Found monthly package: \(monthlyPackage.storeProduct.localizedTitle) - \(monthlyPackage.storeProduct.localizedPriceString)")
             
             // Attempt purchase
             let (_, customerInfo, _) = try await Purchases.shared.purchase(package: monthlyPackage)
@@ -134,20 +136,22 @@ class RevenueCatService: ObservableObject {
     }
     
     private func handlePurchaseError(_ error: ErrorCode) {
-        switch error {
-        case .userCancelledError:
+        print("❌ RevenueCat purchase error: \(error)")
+        
+        // Handle common cases using string matching
+        let errorDescription = error.localizedDescription.lowercased()
+        
+        if errorDescription.contains("cancel") {
             print("👤 User cancelled purchase")
-            // Don't show error for user cancellation
-            break
-        case .paymentPendingError:
+            // Don't set purchaseError for user cancellation
+            return
+        } else if errorDescription.contains("pending") {
             purchaseError = "Purchase is pending approval"
-        case .purchaseNotAllowedError:
+        } else if errorDescription.contains("not allowed") {
             purchaseError = "Purchases are not allowed on this device"
-        case .purchaseInvalidError:
-            purchaseError = "Purchase failed - invalid product"
-        case .networkError:
+        } else if errorDescription.contains("network") {
             purchaseError = "Network error - please check your connection"
-        default:
+        } else {
             purchaseError = "Purchase failed: \(error.localizedDescription)"
         }
     }
@@ -215,7 +219,7 @@ class RevenueCatService: ObservableObject {
             currentOffering = offerings.current
             
             if let monthlyPackage = offerings.current?.monthly {
-                print("💰 Monthly price loaded: \(monthlyPackage.storeProduct.displayPrice)")
+                print("💰 Monthly price loaded: \(monthlyPackage.storeProduct.localizedPriceString)")
             }
         } catch {
             print("❌ Failed to load offerings: \(error)")
@@ -224,7 +228,7 @@ class RevenueCatService: ObservableObject {
     
     var formattedMonthlyPrice: String {
         if let monthlyPackage = currentOffering?.monthly {
-            return monthlyPackage.storeProduct.displayPrice
+            return monthlyPackage.storeProduct.localizedPriceString
         }
         return "$4.99" // Fallback
     }
