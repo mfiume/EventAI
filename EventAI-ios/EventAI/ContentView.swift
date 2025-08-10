@@ -276,9 +276,9 @@ struct ContentView: View {
                             }
                         } label: {
                             Image(systemName: "paperclip")
-                                .font(.system(size: 18))
+                                .font(.system(size: 20))
                                 .foregroundColor(selectedImage != nil ? .blue : .gray.opacity(0.7))
-                                .padding(8)
+                                .padding(10)
                         }
                         
                         // Location services toggle button - TEMPORARILY HIDDEN for AI address testing
@@ -304,10 +304,10 @@ struct ContentView: View {
                             Text(timezoneShorthand)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
                                 .background(Color.gray.opacity(0.1))
-                                .cornerRadius(4)
+                                .cornerRadius(6)
                         }
                         
                         Spacer()
@@ -320,31 +320,32 @@ struct ContentView: View {
                                 isTextFieldFocused = false
                             }) {
                                 Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 16))
+                                    .font(.system(size: 18))
                                     .foregroundColor(.gray.opacity(0.6))
-                                    .padding(8)
+                                    .padding(10)
                             }
                         }
                         
-                        // Generate button - send arrow (similar to iMessage)
+                        // Generate button - text based for better accessibility
                         Button(action: generateCalendarEvents) {
-                            ZStack {
+                            HStack(spacing: 4) {
                                 if isLoading {
                                     ProgressView()
-                                        .scaleEffect(0.7)
+                                        .scaleEffect(0.8)
                                         .tint(.white)
                                 } else {
-                                    Image(systemName: "arrow.up.circle.fill")
-                                        .font(.system(size: 24))
-                                        .foregroundColor((hasContent && !isLoadingUsage) ? .blue : .gray.opacity(0.5))
+                                    Text("Create Events")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
                                 }
                             }
-                            .frame(width: 24, height: 24)
-                            .background(isLoading ? Color.blue : Color.clear)
-                            .clipShape(Circle())
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background((hasContent && !isLoadingUsage) || isLoading ? Color.blue : Color.gray.opacity(0.5))
+                            .cornerRadius(8)
                         }
                         .disabled(!hasContent || isLoading || isLoadingUsage)
-                        .padding(.leading, 4)
                         .padding(.trailing, 8)
                     }
                     .padding(.horizontal, 8)
@@ -478,7 +479,13 @@ struct ContentView: View {
     
     @MainActor
     private func loadUsageFromBackend() async {
-        isLoadingUsage = true
+        // If we already have usage data, update silently without showing spinner
+        let hasExistingData = dailyLimit > 0
+        
+        if !hasExistingData {
+            isLoadingUsage = true
+        }
+        
         do {
             let usageResponse = try await apiService.getUsageStats()
             dailyConversionsUsed = usageResponse.count
@@ -496,12 +503,16 @@ struct ContentView: View {
                 premiumDailyLimit = usageResponse.limit < 100 ? 20 : 200 // Handle testing vs production
             }
             
-            print("📊 Usage loaded: \(usageResponse.remaining) of \(usageResponse.limit) remaining, premium would be \(premiumDailyLimit)")
+            let action = hasExistingData ? "refreshed" : "loaded"
+            print("📊 Usage \(action): \(usageResponse.remaining) of \(usageResponse.limit) remaining, premium would be \(premiumDailyLimit)")
         } catch {
             print("❌ Failed to load usage: \(error)")
             // Keep existing stats on error
         }
-        isLoadingUsage = false
+        
+        if !hasExistingData {
+            isLoadingUsage = false
+        }
     }
     
     @MainActor

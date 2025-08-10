@@ -94,6 +94,37 @@ RESET_HOUR = 0  # Midnight ET
 ✅ Test with real API data
 ✅ Wait for explicit commit instructions
 
+## 🗄️ BigQuery Usage Reset Commands
+
+**Reset daily conversion counts to 0 for all users:**
+```bash
+# Reset conversion counts directly in BigQuery
+bq query --use_legacy_sql=false --project_id=levelup-467902 --format=prettyjson --max_rows=0 "
+UPDATE \`levelup-467902.eventai.usage_tracking\`
+SET conversion_count = 0
+WHERE TRUE
+"
+
+# Verify reset
+bq query --use_legacy_sql=false --project_id=levelup-467902 "
+SELECT user_id, conversion_count, usage_date, reset_timezone
+FROM \`levelup-467902.eventai.usage_tracking\`
+ORDER BY user_id
+"
+```
+
+**Useful BigQuery commands:**
+```bash
+# List datasets
+bq ls --project_id=levelup-467902
+
+# List tables in eventai dataset  
+bq ls --project_id=levelup-467902 eventai
+
+# Show table schema
+bq show --project_id=levelup-467902 levelup-467902:eventai.usage_tracking
+```
+
 ---
 
 ## 📱 iOS App Configuration
