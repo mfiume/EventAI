@@ -32,18 +32,34 @@ class AdService: NSObject, ObservableObject {
     private var interstitialAd: InterstitialAd?
     private var adCompletionHandler: (() -> Void)?
     
-    // AdMob ad unit IDs - Your real production IDs
+    // AdMob ad unit IDs - Use test IDs for development, production IDs for release
+    #if DEBUG
+    static let bannerAdUnitID = "ca-app-pub-3940256099942544/2934735716" // Google test banner ad unit
+    static let interstitialAdUnitID = "ca-app-pub-3940256099942544/4411468910" // Google test interstitial ad unit
+    #else
     static let bannerAdUnitID = "ca-app-pub-5748015623915247/9049521670" // Your banner ad unit ID
     static let interstitialAdUnitID = "ca-app-pub-5748015623915247/7605444032" // Your interstitial ad unit ID
+    #endif
     
     func initializeAds() {
         print("🚀 Initializing AdMob SDK...")
+        
         MobileAds.shared.start { status in
             DispatchQueue.main.async {
                 self.isAdMobInitialized = true
                 self.isAdLoaded = true
                 print("✅ AdMob initialized successfully")
                 print("📊 Initialization status: \(status.description)")
+                
+                // Log which ad unit IDs are being used
+                #if DEBUG
+                print("🔧 Using TEST ad units:")
+                print("  Banner: \(AdService.bannerAdUnitID)")
+                print("  Interstitial: \(AdService.interstitialAdUnitID)")
+                #else
+                print("🚀 Using PRODUCTION ad units")
+                #endif
+                
                 // Load interstitial ad after initialization
                 self.loadInterstitialAd()
             }

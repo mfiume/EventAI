@@ -33,9 +33,9 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Usage indicator for free users (only show after loading)
-                if !subscriptionService.isPremium && !isLoadingUsage {
-                    UsageIndicatorView(subscriptionService: subscriptionService, showingPremiumModal: $showingPremiumModal, dailyConversionsUsed: dailyConversionsUsed, dailyLimit: dailyLimit)
+                // Usage indicator for free users (always show with skeleton loader)
+                if !subscriptionService.isPremium {
+                    UsageIndicatorView(subscriptionService: subscriptionService, showingPremiumModal: $showingPremiumModal, dailyConversionsUsed: dailyConversionsUsed, dailyLimit: dailyLimit, isLoading: isLoadingUsage)
                 }
                 
                 inputSection
@@ -336,14 +336,14 @@ struct ContentView: View {
                                 } else {
                                     Image(systemName: "arrow.up.circle.fill")
                                         .font(.system(size: 24))
-                                        .foregroundColor(hasContent ? .blue : .gray.opacity(0.5))
+                                        .foregroundColor((hasContent && !isLoadingUsage) ? .blue : .gray.opacity(0.5))
                                 }
                             }
                             .frame(width: 24, height: 24)
                             .background(isLoading ? Color.blue : Color.clear)
                             .clipShape(Circle())
                         }
-                        .disabled(!hasContent || isLoading)
+                        .disabled(!hasContent || isLoading || isLoadingUsage)
                         .padding(.leading, 4)
                         .padding(.trailing, 8)
                     }
@@ -504,6 +504,22 @@ struct ContentView: View {
         isLoadingUsage = false
     }
     
+    @MainActor
+    private func refreshUsageFromBackend() async {
+        // Refresh usage without showing skeleton loader (for post-conversion updates)
+        do {
+            let usageResponse = try await apiService.getUsageStats()
+            dailyConversionsUsed = usageResponse.count
+            dailyLimit = usageResponse.limit
+            canConvert = usageResponse.canConvert
+            
+            print("📊 Usage refreshed: \(usageResponse.remaining) of \(usageResponse.limit) remaining")
+        } catch {
+            print("❌ Failed to refresh usage: \(error)")
+            // Keep existing stats on error
+        }
+    }
+    
     private func generateCalendarEvents() {
         Task {
             await performGenerateCalendarEvents()
@@ -516,20 +532,19 @@ struct ContentView: View {
         // Remove focus and dismiss keyboard when generating events
         isTextFieldFocused = false
         
-        // Check usage limits for non-premium users
+        // Check usage limits for non-premium users using cached data
         let isPremium = subscriptionService.isPremium
         if !isPremium {
-            // Refresh usage from backend first
-            await loadUsageFromBackend()
+            let remaining = max(0, dailyLimit - dailyConversionsUsed)
             
-            // Check if user can convert
-            if !canConvert {
-                // Auto-open premium modal instead of showing alert
+            // Trust the cached usage count - if it shows 0 remaining, show premium modal
+            if remaining == 0 {
                 await MainActor.run {
                     showingPremiumModal = true
                 }
                 return
             }
+            // If remaining > 0, proceed with conversion - backend will handle if somehow usage is actually exhausted
         }
         
         await MainActor.run {
@@ -595,10 +610,10 @@ struct ContentView: View {
                         currentICSContent = response.icsContent
                         showEventPreview = true
                         
-                        // Refresh usage stats after successful conversion
+                        // Refresh usage stats after successful conversion (without skeleton loader)
                         if !subscriptionService.isPremium {
                             Task {
-                                await loadUsageFromBackend()
+                                await refreshUsageFromBackend()
                             }
                         }
                     } else {
@@ -1007,6 +1022,8 @@ struct EventCard: View {
     let isSelected: Bool
     let onTap: () -> Void
     
+    @State private var showingOccurrences = false
+    
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
@@ -1027,21 +1044,23 @@ struct EventCard: View {
                         Spacer()
                     }
                     
-                    // Recurring badge - moved ABOVE the blue date/time section
+                    // Enhanced recurring badge with comprehensive info
                     if event.isRecurring {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.caption2)
-                                .foregroundColor(.orange)
-                            Text(formatComprehensiveRecurrence(event.recurrencePattern))
-                                .font(.caption2)
-                                .foregroundColor(.orange)
-                                .fontWeight(.medium)
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption2)
+                                    .foregroundColor(.orange)
+                                Text(formatEnhancedRecurrenceBadge(event))
+                                    .font(.caption2)
+                                    .foregroundColor(.orange)
+                                    .fontWeight(.medium)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.15))
+                            .cornerRadius(6)
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.orange.opacity(0.15))
-                        .cornerRadius(6)
                     }
                     
                     // Time and timezone info - REQUIRED for ICS
@@ -1053,6 +1072,14 @@ struct EventCard: View {
                                     .font(.caption)
                                 
                                 VStack(alignment: .leading, spacing: 2) {
+                                    // Show "First occurrence" for recurring events
+                                    if event.isRecurring {
+                                        Text("First occurrence")
+                                            .font(.caption)
+                                            .foregroundColor(.blue)
+                                            .fontWeight(.medium)
+                                    }
+                                    
                                     Text(formatRecurringEventTime(start: startDate, end: event.formattedEndDate, isRecurring: event.isRecurring))
                                         .font(.subheadline)
                                         .fontWeight(.medium)
@@ -1086,6 +1113,101 @@ struct EventCard: View {
                         .padding(.horizontal, 12)
                         .background(Color.blue.opacity(0.05))
                         .cornerRadius(10)
+                    }
+                    
+                    // Expandable occurrences for recurring events
+                    if event.isRecurring {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showingOccurrences.toggle()
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: showingOccurrences ? "chevron.down" : "chevron.right")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                    
+                                    Text(showingOccurrences ? "Hide occurrences" : "Show next occurrences")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                        .fontWeight(.medium)
+                                    
+                                    Spacer()
+                                    
+                                    // Show infinity icon for indefinite recurrences, exact count for finite ones
+                                    if isIndefiniteRecurrence(for: event) {
+                                        HStack(spacing: 2) {
+                                            Image(systemName: "infinity")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                            Text("more")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    } else {
+                                        let totalOccurrences = getOccurrenceCount(for: event)
+                                        let remainingOccurrences = totalOccurrences - 1 // Subtract the first occurrence we're showing
+                                        Text("\(remainingOccurrences) more")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            if showingOccurrences {
+                                LazyVStack(alignment: .leading, spacing: 6) {
+                                    ForEach(generateNextOccurrences(for: event).prefix(10), id: \.self) { occurrence in
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "clock")
+                                                .font(.caption2)
+                                                .foregroundColor(.blue.opacity(0.7))
+                                            
+                                            Text(formatOccurrenceDate(occurrence))
+                                                .font(.caption)
+                                                .foregroundColor(.primary)
+                                            
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 4)
+                                        .background(Color.blue.opacity(0.03))
+                                        .cornerRadius(6)
+                                    }
+                                    
+                                    // Show "more available" indicator for indefinite or if there are more than 10 future occurrences
+                                    let futureOccurrences = generateNextOccurrences(for: event)
+                                    let showingCount = min(10, futureOccurrences.count)
+                                    let remainingAfterShown = futureOccurrences.count - showingCount
+                                    
+                                    if isIndefiniteRecurrence(for: event) || remainingAfterShown > 0 {
+                                        HStack(spacing: 4) {
+                                            if isIndefiniteRecurrence(for: event) {
+                                                Image(systemName: "infinity")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                Text("continues indefinitely")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                    .italic()
+                                            } else {
+                                                Image(systemName: "ellipsis")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                Text("and \(remainingAfterShown) more occurrences")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                    .italic()
+                                            }
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 2)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 4)
                     }
                     
                     // Location if available
@@ -1583,6 +1705,7 @@ struct UsageIndicatorView: View {
     @Binding var showingPremiumModal: Bool
     let dailyConversionsUsed: Int
     let dailyLimit: Int
+    let isLoading: Bool
     
     var body: some View {
         let remaining = max(0, dailyLimit - dailyConversionsUsed)
@@ -1591,12 +1714,23 @@ struct UsageIndicatorView: View {
         HStack {
             Text("Daily conversions")
                 .font(.caption)
+                .fontWeight(.medium)
                 .foregroundColor(.secondary)
             
-            Text("\(remaining) of \(dailyLimit) remaining")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(.primary)
+            if isLoading {
+                // Skeleton loader
+                HStack(spacing: 4) {
+                    SkeletonBox(width: 60, height: 16)
+                    Text("remaining")
+                        .font(.caption)
+                        .foregroundColor(.secondary.opacity(0.6))
+                }
+            } else {
+                Text("\(remaining) of \(dailyLimit) remaining")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+            }
             
             Spacer()
             
@@ -1605,11 +1739,52 @@ struct UsageIndicatorView: View {
             }
             .font(.caption)
             .foregroundColor(.blue)
+            .opacity(isLoading ? 0.6 : 1.0)
+            .disabled(isLoading)
         }
+        .padding(.vertical, 12)
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Color.blue.opacity(0.05))
-        .cornerRadius(8)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.blue.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.blue.opacity(0.1), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// MARK: - Skeleton Loader Components
+struct SkeletonBox: View {
+    let width: CGFloat
+    let height: CGFloat
+    @State private var isShimmering = false
+    
+    var body: some View {
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.gray.opacity(0.3),
+                        Color.gray.opacity(0.1),
+                        Color.gray.opacity(0.3)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .frame(width: width, height: height)
+            .cornerRadius(4)
+            .offset(x: isShimmering ? 200 : -200)
+            .clipped()
+            .animation(
+                Animation.linear(duration: 1.5).repeatForever(autoreverses: false),
+                value: isShimmering
+            )
+            .onAppear {
+                isShimmering = true
+            }
     }
 }
 
@@ -1654,6 +1829,391 @@ struct BannerAdView: View {
         )
         .cornerRadius(8)
     }
+}
+
+// MARK: - Enhanced Recurring Event Helper Functions
+
+func formatEnhancedRecurrenceBadge(_ event: ParsedEvent) -> String {
+    guard let startDate = event.formattedStartDate else { 
+        return "Recurs regularly"
+    }
+    
+    // Get base recurrence frequency
+    let baseRecurrence = formatRecurrenceFromPattern(event.recurrencePattern)
+    
+    // Format start date
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateStyle = .medium
+    dateFormatter.timeStyle = .none
+    let startDateString = dateFormatter.string(from: startDate)
+    
+    // Check if there's an end date/pattern (we'll use a heuristic for now)
+    let hasEndDate = false // Most recurring events from EventAI are indefinite
+    
+    if hasEndDate {
+        return "\(baseRecurrence), Starts \(startDateString), Ends Dec 31"
+    } else {
+        // Don't include "Ends indefinite" for indefinite recurrences
+        return "\(baseRecurrence), Starts \(startDateString)"
+    }
+}
+    
+    func generateNextOccurrences(for event: ParsedEvent) -> [Date] {
+        guard let startDate = event.formattedStartDate,
+              let pattern = event.recurrencePattern?.uppercased() else {
+            return []
+        }
+        
+        var occurrences: [Date] = []
+        let calendar = Calendar.current
+        var currentDate = startDate
+        
+        // Parse frequency and interval from pattern
+        let frequency = extractFrequency(from: pattern)
+        let interval = extractInterval(from: pattern) ?? 1
+        
+        // Generate up to 50 occurrences (we'll show max 10, but calculate more for counting)
+        for _ in 0..<50 {
+            switch frequency {
+            case "DAILY":
+                currentDate = calendar.date(byAdding: .day, value: interval, to: currentDate) ?? currentDate
+            case "WEEKLY":
+                currentDate = calendar.date(byAdding: .weekOfYear, value: interval, to: currentDate) ?? currentDate
+            case "MONTHLY":
+                currentDate = calendar.date(byAdding: .month, value: interval, to: currentDate) ?? currentDate
+            case "YEARLY":
+                currentDate = calendar.date(byAdding: .year, value: interval, to: currentDate) ?? currentDate
+            default:
+                currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+            }
+            
+            // Only add future occurrences
+            if currentDate > Date() {
+                occurrences.append(currentDate)
+            }
+        }
+        
+        return occurrences
+    }
+    
+    func getOccurrenceCount(for event: ParsedEvent) -> Int {
+        // Calculate exact total occurrences including the first occurrence
+        guard let startDate = event.formattedStartDate,
+              let pattern = event.recurrencePattern?.uppercased() else { return 1 }
+        
+        // If pattern has COUNT=, extract that number
+        if let countRange = pattern.range(of: "COUNT=") {
+            let afterCount = pattern[countRange.upperBound...]
+            if let semicolonRange = afterCount.range(of: ";") {
+                if let count = Int(String(afterCount[..<semicolonRange.lowerBound])) {
+                    return count // This includes the first occurrence
+                }
+            } else {
+                if let count = Int(String(afterCount)) {
+                    return count // This includes the first occurrence
+                }
+            }
+        }
+        
+        // If pattern has UNTIL=, calculate occurrences until that date
+        if let untilRange = pattern.range(of: "UNTIL=") {
+            let afterUntil = pattern[untilRange.upperBound...]
+            let untilString: String
+            if let semicolonRange = afterUntil.range(of: ";") {
+                untilString = String(afterUntil[..<semicolonRange.lowerBound])
+            } else {
+                untilString = String(afterUntil)
+            }
+            
+            // Parse until date and calculate occurrences
+            if let untilDate = parseSimpleICSDate(untilString) {
+                return calculateOccurrencesUntilDate(startDate: startDate, untilDate: untilDate, pattern: pattern)
+            }
+        }
+        
+        // For indefinite recurrences, return a reasonable number for display
+        // but mark them as indefinite using isIndefiniteRecurrence()
+        let frequency = extractFrequency(from: pattern)
+        let interval = extractInterval(from: pattern) ?? 1
+        
+        switch frequency {
+        case "DAILY":
+            return 1 + (90 / interval) // ~3 months worth
+        case "WEEKLY":
+            return 1 + (52 / interval) // ~1 year worth  
+        case "MONTHLY":
+            return 1 + (24 / interval) // ~2 years worth
+        case "YEARLY":
+            return 1 + (10 / interval) // ~10 years worth
+        default:
+            return 50 // Default reasonable number
+        }
+    }
+    
+    private func calculateOccurrencesUntilDate(startDate: Date, untilDate: Date, pattern: String) -> Int {
+        let frequency = extractFrequency(from: pattern)
+        let interval = extractInterval(from: pattern) ?? 1
+        let calendar = Calendar.current
+        var currentDate = startDate
+        var count = 1 // Include the first occurrence
+        
+        while currentDate < untilDate {
+            switch frequency {
+            case "DAILY":
+                currentDate = calendar.date(byAdding: .day, value: interval, to: currentDate) ?? currentDate
+            case "WEEKLY":
+                currentDate = calendar.date(byAdding: .weekOfYear, value: interval, to: currentDate) ?? currentDate
+            case "MONTHLY":
+                currentDate = calendar.date(byAdding: .month, value: interval, to: currentDate) ?? currentDate
+            case "YEARLY":
+                currentDate = calendar.date(byAdding: .year, value: interval, to: currentDate) ?? currentDate
+            default:
+                currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+            }
+            
+            if currentDate <= untilDate {
+                count += 1
+            }
+        }
+        
+        return count
+    }
+    
+    private func parseSimpleICSDate(_ dateString: String) -> Date? {
+        let cleanDateString = dateString.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Handle UTC dates (ending with Z)
+        if cleanDateString.hasSuffix("Z") {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+            formatter.timeZone = TimeZone(identifier: "UTC")
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            return formatter.date(from: cleanDateString)
+        }
+        
+        // Handle local time dates: 20241010T140000
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd'T'HHmmss"
+        formatter.timeZone = TimeZone.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.date(from: cleanDateString)
+    }
+    
+    func isIndefiniteRecurrence(for event: ParsedEvent) -> Bool {
+        // Check if recurrence has no end date/count (indefinite)
+        guard let pattern = event.recurrencePattern?.uppercased() else { return false }
+        
+        // If pattern contains COUNT= or UNTIL=, it's not indefinite
+        if pattern.contains("COUNT=") || pattern.contains("UNTIL=") {
+            return false
+        }
+        
+        // Most EventAI recurring events are indefinite (no explicit end)
+        return true
+    }
+    
+    func formatOccurrenceDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium // Use medium instead of full for shorter text
+        formatter.timeStyle = .none   // Remove time to keep text short
+        return formatter.string(from: date)
+    }
+    
+    private func extractFrequency(from pattern: String) -> String {
+        if let freqRange = pattern.range(of: "FREQ=") {
+            let afterFreq = pattern[freqRange.upperBound...]
+            if let semicolonRange = afterFreq.range(of: ";") {
+                return String(afterFreq[..<semicolonRange.lowerBound])
+            } else {
+                return String(afterFreq)
+            }
+        }
+        return "DAILY"
+    }
+    
+    private func extractInterval(from pattern: String) -> Int? {
+        if let intervalRange = pattern.range(of: "INTERVAL=") {
+            let afterInterval = pattern[intervalRange.upperBound...]
+            if let semicolonRange = afterInterval.range(of: ";") {
+                return Int(String(afterInterval[..<semicolonRange.lowerBound]))
+            } else {
+                return Int(String(afterInterval))
+            }
+        }
+        return nil
+    }
+
+func formatRecurrenceFromPattern(_ pattern: String?) -> String {
+    guard let pattern = pattern?.lowercased() else { return "Recurs regularly" }
+    
+    // Parse RFC 5545 iCalendar recurrence rules (FREQ=...; INTERVAL=...)
+    if pattern.contains("freq=") {
+        return parseRFC5545RecurrencePattern(pattern)
+    }
+    
+    // Handle natural language patterns
+    if pattern.contains("daily") || pattern.contains("every day") {
+        return "Recurs daily"
+    } else if pattern.contains("weekdays") || pattern.contains("monday through friday") {
+        return "Recurs weekdays"
+    } else if pattern.contains("weekends") {
+        return "Recurs weekends"
+    } else if pattern.contains("monday") && pattern.contains("wednesday") && pattern.contains("friday") {
+        return "Recurs Mon, Wed, Fri"
+    } else if pattern.contains("tuesday") && pattern.contains("thursday") {
+        return "Recurs Tue, Thu"
+    } else if pattern.contains("weekly") {
+        if pattern.contains("monday") { return "Recurs weekly on Mon" }
+        else if pattern.contains("tuesday") { return "Recurs weekly on Tue" }
+        else if pattern.contains("wednesday") { return "Recurs weekly on Wed" }
+        else if pattern.contains("thursday") { return "Recurs weekly on Thu" }
+        else if pattern.contains("friday") { return "Recurs weekly on Fri" }
+        else if pattern.contains("saturday") { return "Recurs weekly on Sat" }
+        else if pattern.contains("sunday") { return "Recurs weekly on Sun" }
+        else { return "Recurs weekly" }
+    } else if pattern.contains("first") && pattern.contains("monday") {
+        return "Recurs 1st Mon of month"
+    } else if pattern.contains("last") && pattern.contains("friday") {
+        return "Recurs last Fri of month"
+    } else if pattern.contains("monthly") {
+        return "Recurs monthly"
+    } else if pattern.contains("yearly") || pattern.contains("annually") {
+        return "Recurs yearly"
+    } else if pattern.contains("bi-weekly") || pattern.contains("every 2 weeks") {
+        return "Recurs bi-weekly"
+    } else if pattern.contains("every") && pattern.contains("hour") {
+        return "Recurs hourly"
+    } else {
+        // Check for multiple days pattern
+        let days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        let dayAbbrevs = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        var foundDays: [String] = []
+        
+        for (index, day) in days.enumerated() {
+            if pattern.contains(day) {
+                foundDays.append(dayAbbrevs[index])
+            }
+        }
+        
+        if foundDays.count > 1 {
+            if foundDays.count == 2 {
+                return "Recurs \(foundDays[0]) & \(foundDays[1])"
+            } else if foundDays.count > 2 {
+                let lastDay = foundDays.removeLast()
+                return "Recurs \(foundDays.joined(separator: ", ")) & \(lastDay)"
+            }
+        } else if foundDays.count == 1 {
+            return "Recurs \(foundDays[0])"
+        }
+        
+        // Fallback to pattern with "Recurs" prefix
+        return "Recurs \(pattern.prefix(20).capitalized)"
+    }
+}
+
+func parseRFC5545RecurrencePattern(_ pattern: String) -> String {
+    // Parse RFC 5545 iCalendar recurrence patterns like "FREQ=MONTHLY;INTERVAL=6"
+    let components = pattern.components(separatedBy: ";")
+    var freq: String?
+    var interval = 1 // Default interval is 1
+    var byDay: String?
+    
+    for component in components {
+        let trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("freq=") {
+            freq = String(trimmed.dropFirst(5))
+        } else if trimmed.hasPrefix("interval=") {
+            if let intervalValue = Int(String(trimmed.dropFirst(9))) {
+                interval = intervalValue
+            }
+        } else if trimmed.hasPrefix("byday=") {
+            byDay = String(trimmed.dropFirst(6))
+        }
+    }
+    
+    guard let frequency = freq else {
+        return "Recurs regularly"
+    }
+    
+    return formatFrequencyDescription(freq: frequency, interval: interval, byDay: byDay)
+}
+
+func formatFrequencyDescription(freq: String, interval: Int, byDay: String?) -> String {
+    let freqLower = freq.lowercased()
+    
+    switch freqLower {
+    case "daily":
+        if interval == 1 {
+            return "Recurs daily"
+        } else {
+            return "Recurs every \(interval) days"
+        }
+    case "weekly":
+        if let byDay = byDay {
+            let dayNames = parseDayNamesFromByDay(byDay)
+            if interval == 1 {
+                return dayNames.count == 1 ? "Recurs weekly on \(dayNames[0])" : "Recurs weekly on \(dayNames.joined(separator: ", "))"
+            } else {
+                return dayNames.count == 1 ? "Recurs every \(interval) weeks on \(dayNames[0])" : "Recurs every \(interval) weeks on \(dayNames.joined(separator: ", "))"
+            }
+        } else {
+            return interval == 1 ? "Recurs weekly" : "Recurs every \(interval) weeks"
+        }
+    case "monthly":
+        if interval == 1 {
+            return "Recurs monthly"
+        } else {
+            return "Recurs every \(interval) months"
+        }
+    case "yearly":
+        if interval == 1 {
+            return "Recurs yearly"
+        } else {
+            return "Recurs every \(interval) years"
+        }
+    case "hourly":
+        if interval == 1 {
+            return "Recurs hourly"
+        } else {
+            return "Recurs every \(interval) hours"
+        }
+    case "minutely":
+        if interval == 1 {
+            return "Recurs every minute"
+        } else {
+            return "Recurs every \(interval) minutes"
+        }
+    case "secondly":
+        if interval == 1 {
+            return "Recurs every second"
+        } else {
+            return "Recurs every \(interval) seconds"
+        }
+    default:
+        return interval == 1 ? "Recurs \(freq)" : "Recurs every \(interval) \(freq.lowercased())"
+    }
+}
+
+func parseDayNamesFromByDay(_ byDay: String) -> [String] {
+    // Parse BYDAY values like "MO,WE,FR" or "1MO,-1FR"
+    let dayMapping: [String: String] = [
+        "mo": "Mon", "tu": "Tue", "we": "Wed", "th": "Thu",
+        "fr": "Fri", "sa": "Sat", "su": "Sun"
+    ]
+    
+    let days = byDay.lowercased().components(separatedBy: ",")
+    var result: [String] = []
+    
+    for day in days {
+        let trimmed = day.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Remove any position indicators (1MO, -1FR, etc.) and just get the day
+        let dayCode = String(trimmed.suffix(2))
+        if let dayName = dayMapping[dayCode] {
+            result.append(dayName)
+        }
+    }
+    
+    return result
 }
 
 #Preview {

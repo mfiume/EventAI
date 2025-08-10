@@ -16,6 +16,7 @@ class SubscriptionService: ObservableObject {
     private var updateListenerTask: Task<Void, Error>?
     
     init() {
+        print("🔧 Initializing SubscriptionService...")
         updateListenerTask = listenForTransactions()
         Task {
             await loadProducts()
@@ -29,9 +30,15 @@ class SubscriptionService: ObservableObject {
     
     // MARK: - Product Loading
     private func loadProducts() async {
+        print("🔧 Loading products for ID: \(monthlySubscriptionID)")
         do {
             products = try await Product.products(for: [monthlySubscriptionID])
             print("✅ Loaded \(products.count) products")
+            
+            for product in products {
+                print("📦 Product: \(product.id) - \(product.displayName) - \(product.displayPrice)")
+                print("   Type: \(product.type), Available: \(product.subscription != nil)")
+            }
         } catch {
             print("❌ Failed to load products: \(error)")
         }
@@ -39,31 +46,42 @@ class SubscriptionService: ObservableObject {
     
     // MARK: - Purchase Flow
     func purchaseSubscription() async {
+        print("🛒 Starting subscription purchase flow...")
+        
         guard let product = products.first(where: { $0.id == monthlySubscriptionID }) else {
-            purchaseError = "Product not found"
+            print("❌ Product not found. Available products: \(products.map { $0.id })")
+            purchaseError = "Product not found. Please try again."
             return
         }
+        
+        print("📦 Using product: \(product.displayName) - \(product.displayPrice)")
         
         isLoading = true
         purchaseError = nil
         
         do {
+            print("💳 Initiating purchase...")
             let result = try await product.purchase()
             
             switch result {
             case .success(let verificationResult):
+                print("✅ Purchase successful, verifying...")
                 let transaction = try checkVerified(verificationResult)
+                print("✅ Transaction verified: \(transaction.id)")
                 await updateSubscriptionStatus()
                 await transaction.finish()
+                print("✅ Transaction finished")
                 
             case .userCancelled:
-                print("User cancelled purchase")
+                print("👤 User cancelled purchase")
                 
             case .pending:
-                print("Purchase pending")
+                print("⏳ Purchase pending approval")
+                purchaseError = "Purchase is pending approval"
                 
             @unknown default:
-                print("Unknown purchase result")
+                print("❓ Unknown purchase result")
+                purchaseError = "Unknown purchase result"
             }
             
         } catch {

@@ -23,6 +23,7 @@ struct TimezonePickerView: View {
                 .edgesIgnoringSafeArea(.horizontal)
             }
             .navigationTitle("Timezone")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
     

@@ -125,6 +125,15 @@ struct PremiumModalView: View {
                         Text("\(localizedPrice) • Cancel anytime")
                             .font(.system(size: 14))
                             .foregroundColor(.gray)
+                        
+                        Button("Restore Purchases") {
+                            Task {
+                                await restorePurchases()
+                            }
+                        }
+                        .font(.system(size: 16))
+                        .foregroundColor(.blue)
+                        .padding(.top, 8)
                     }
                     .padding(.horizontal, 20) // Screen edge padding for buttons
                     .padding(.bottom, 40)
@@ -172,17 +181,9 @@ struct PremiumModalView: View {
     }
 
     private func loadLocalizedPrice() async {
-        do {
-            let productId = "eventai_premium_monthly" // EventAI monthly subscription
-            let products = try await Product.products(for: [productId])
-
-            if let product = products.first {
-                await MainActor.run {
-                    localizedPrice = product.displayPrice
-                }
-            }
-        } catch {
-            // Keep the default "$4.99/month" if price loading fails
+        // Use the subscription service's price
+        await MainActor.run {
+            localizedPrice = subscriptionService.monthlyPriceString + "/month"
         }
     }
 
@@ -190,70 +191,48 @@ struct PremiumModalView: View {
         isLoading = true
         errorMessage = nil
 
-        do {
-            // Load the product from App Store
-            let productId = "eventai_premium_monthly"
-            let products = try await Product.products(for: [productId])
-
-            guard let product = products.first else {
-                errorMessage = "Product not configured in App Store Connect. Please set up eventai_premium_monthly subscription."
-                isLoading = false
-                return
+        // Use the subscription service for the purchase
+        await subscriptionService.purchaseSubscription()
+        
+        // Check results from subscription service
+        if let error = subscriptionService.purchaseError {
+            errorMessage = error
+        } else if subscriptionService.isPremium {
+            // Purchase successful and confirmed
+            dismiss()
+        } else {
+            // Handle edge cases
+            errorMessage = "Purchase completed! If premium features don't appear immediately, please restart the app."
+            
+            // Auto-dismiss after showing message
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                dismiss()
             }
+        }
 
-            print("🛒 Starting purchase flow for product: eventai_premium_monthly")
+        isLoading = false
+    }
 
-            // Initiate App Store purchase
-            print("💳 Initiating App Store purchase...")
-            let result = try await product.purchase()
+    private func restorePurchases() async {
+        isLoading = true
+        errorMessage = nil
 
-            switch result {
-            case .success(let verification):
-                switch verification {
-                case .verified(let transaction):
-                    print("✅ Purchase successful, transaction ID: \(transaction.id)")
-
-                    // Finish the transaction first
-                    await transaction.finish()
-
-                    // Update subscription service
-                    await subscriptionService.purchaseSubscription()
-                    
-                    if subscriptionService.isPremium {
-                        // Purchase successful and confirmed
-                        dismiss()
-                    } else {
-                        // Provide retry option
-                        errorMessage = "Purchase completed! If premium features don't appear immediately, please restart the app."
-
-                        // Auto-dismiss after showing message
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            dismiss()
-                        }
-                    }
-
-                case .unverified:
-                    errorMessage = "Purchase verification failed"
-                }
-
-            case .userCancelled:
-                errorMessage = nil // Don't show error for user cancellation
-
-            case .pending:
-                errorMessage = "Purchase is pending approval"
-
-            @unknown default:
-                errorMessage = "Purchase failed"
+        // Use the subscription service to restore purchases
+        await subscriptionService.restorePurchases()
+        
+        // Check results from subscription service
+        if let error = subscriptionService.purchaseError {
+            errorMessage = error
+        } else if subscriptionService.isPremium {
+            // Restore successful
+            errorMessage = "Purchases restored successfully!"
+            
+            // Auto-dismiss after showing success message
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                dismiss()
             }
-
-        } catch StoreKitError.networkError {
-            errorMessage = "Network error. Please check your connection."
-        } catch StoreKitError.systemError {
-            errorMessage = "App Store unavailable. Please try again later."
-        } catch StoreKitError.userCancelled {
-            errorMessage = nil // Don't show error for user cancellation
-        } catch {
-            errorMessage = "Purchase failed: \(error.localizedDescription)"
+        } else {
+            errorMessage = "No previous purchases found to restore."
         }
 
         isLoading = false
