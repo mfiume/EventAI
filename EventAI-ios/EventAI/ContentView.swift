@@ -53,6 +53,16 @@ struct ContentView: View {
             .padding()
             .navigationTitle("EventAI")
             .navigationBarTitleDisplayMode(.inline)
+            #if DEBUG
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink("🧪 Test") {
+                        SubscriptionTestView()
+                    }
+                    .font(.caption)
+                }
+            }
+            #endif
             .onTapGesture {
                 // Remove focus and dismiss keyboard when tapping outside text field
                 isTextFieldFocused = false
