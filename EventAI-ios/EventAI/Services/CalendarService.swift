@@ -248,7 +248,29 @@ class CalendarService: ObservableObject {
     
     private func parseICSContent(_ icsContent: String, userTimezone: TimeZone = TimeZone.current) -> [EventData] {
         var events: [EventData] = []
-        let lines = icsContent.components(separatedBy: .newlines)
+        let rawLines = icsContent.components(separatedBy: .newlines)
+        
+        // Handle RFC 5545 line folding (continuation lines start with space or tab)
+        var unfoldedLines: [String] = []
+        var currentLine = ""
+        
+        for line in rawLines {
+            if line.hasPrefix(" ") || line.hasPrefix("\t") {
+                // This is a continuation line - remove the leading space/tab and append
+                currentLine += line.dropFirst()
+            } else {
+                // This is a new line - save the previous line and start a new one
+                if !currentLine.isEmpty {
+                    unfoldedLines.append(currentLine)
+                }
+                currentLine = line
+            }
+        }
+        
+        // Don't forget the last line
+        if !currentLine.isEmpty {
+            unfoldedLines.append(currentLine)
+        }
         
         var currentEvent: EventData?
         var currentTimezone: TimeZone?
@@ -258,10 +280,29 @@ class CalendarService: ObservableObject {
         print(icsContent)
         print(String(repeating: "=", count: 80))
         
+        // DEBUG: Show raw lines around DESCRIPTION for analysis
+        print("🔍 DEBUG: Raw lines around DESCRIPTION:")
+        for (index, line) in rawLines.enumerated() {
+            if line.contains("DESCRIPTION") || line.contains("eventai") || (index > 0 && rawLines[index-1].contains("DESCRIPTION")) {
+                let prefix = line.hasPrefix(" ") ? "[SPACE]" : (line.hasPrefix("\t") ? "[TAB]" : "[NEW]")
+                print("  Raw [\(index)] \(prefix): '\(line)'")
+            }
+        }
+        
+        // DEBUG: Show line folding results
+        print("🔍 DEBUG: Line folding processed \(rawLines.count) raw lines into \(unfoldedLines.count) unfolded lines")
+        
+        // DEBUG: Show examples of folded lines
+        for (index, line) in unfoldedLines.enumerated() {
+            if line.contains("DESCRIPTION:") || line.contains("eventai") {
+                print("🔍 DEBUG Unfolded line [\(index)]: '\(line)'")
+            }
+        }
+        
         // DEBUG: Also output each line as it's parsed
         print("🔍 DEBUG: Line-by-line ICS parsing:")
         
-        for line in lines {
+        for line in unfoldedLines {
             let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
             
             // DEBUG: Print each significant line

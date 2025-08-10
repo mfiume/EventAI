@@ -20,5 +20,14 @@
 	<string>$(API_BASE_URL)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-5748015623915247~8933971607</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
 </dict>
 </plist>
