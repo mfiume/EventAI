@@ -14,8 +14,8 @@ struct ContentView: View {
     @State private var currentEvents: [ParsedEvent] = []
     @State private var currentICSContent = ""
     @State private var dailyConversionsUsed = 0
-    @State private var dailyLimit = 100  // Updated to match backend testing limits
-    @State private var premiumDailyLimit = 200  // Updated to match backend testing limits
+    @State private var dailyLimit = 0  // Will be set by backend API
+    @State private var premiumDailyLimit = 0  // Will be set by backend API
     @State private var canConvert = true
     @State private var isLoadingUsage = true
     @State private var selectedImage: UIImage?
@@ -53,16 +53,6 @@ struct ContentView: View {
             .padding()
             .navigationTitle("EventAI")
             .navigationBarTitleDisplayMode(.inline)
-            #if DEBUG
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    NavigationLink("🧪 Test") {
-                        SubscriptionTestView()
-                    }
-                    .font(.caption)
-                }
-            }
-            #endif
             .onTapGesture {
                 // Remove focus and dismiss keyboard when tapping outside text field
                 isTextFieldFocused = false

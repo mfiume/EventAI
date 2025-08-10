@@ -206,8 +206,10 @@ class RevenueCatService: NSObject, ObservableObject {
     
     // MARK: - Product Information
     var monthlyPriceString: String {
-        // This will be updated when offerings are loaded
-        return "$4.99" // Fallback price
+        guard let monthlyPackage = currentOffering?.monthly else {
+            fatalError("Monthly subscription package not available. Ensure offerings are loaded before accessing price.")
+        }
+        return monthlyPackage.storeProduct.localizedPriceString
     }
     
     // Store the current offerings for price display
@@ -227,10 +229,10 @@ class RevenueCatService: NSObject, ObservableObject {
     }
     
     var formattedMonthlyPrice: String {
-        if let monthlyPackage = currentOffering?.monthly {
-            return monthlyPackage.storeProduct.localizedPriceString
+        guard let monthlyPackage = currentOffering?.monthly else {
+            fatalError("Monthly subscription package not available. Ensure offerings are loaded before accessing price.")
         }
-        return "$4.99" // Fallback
+        return monthlyPackage.storeProduct.localizedPriceString
     }
 }
 

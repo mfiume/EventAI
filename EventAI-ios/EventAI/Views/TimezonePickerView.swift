@@ -6,25 +6,19 @@ struct TimezonePickerView: View {
     @State private var searchText = ""
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                SearchBar(text: $searchText)
-                
-                List(filteredTimezones, id: \.identifier) { timezone in
-                    TimezoneRow(
-                        timezone: timezone,
-                        isSelected: timezone.identifier == selectedTimezone.identifier
-                    ) {
-                        selectedTimezone = timezone
-                        presentationMode.wrappedValue.dismiss()
-                    }
-                }
-                .listStyle(PlainListStyle())
-                .edgesIgnoringSafeArea(.horizontal)
+        List(filteredTimezones, id: \.identifier) { timezone in
+            TimezoneRow(
+                timezone: timezone,
+                isSelected: timezone.identifier == selectedTimezone.identifier
+            ) {
+                selectedTimezone = timezone
+                presentationMode.wrappedValue.dismiss()
             }
-            .navigationTitle("Timezone")
-            .navigationBarTitleDisplayMode(.inline)
         }
+        .navigationTitle("Timezone")
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search timezones...")
+        .listStyle(.plain)
     }
     
     private var filteredTimezones: [TimeZone] {
@@ -112,27 +106,6 @@ struct TimezoneRow: View {
     }
 }
 
-struct SearchBar: View {
-    @Binding var text: String
-    
-    var body: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
-            
-            TextField("Search timezones...", text: $text)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            
-            if !text.isEmpty {
-                Button("Clear") {
-                    text = ""
-                }
-                .foregroundColor(.blue)
-            }
-        }
-        .padding(.horizontal)
-    }
-}
 
 #Preview {
     TimezonePickerView(selectedTimezone: .constant(TimeZone.current))

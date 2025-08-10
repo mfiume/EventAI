@@ -43,6 +43,7 @@
 		1A234567890A001F /* RevenueCatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatService.swift; sourceTree = "<group>"; };
 		1A234567890A0021 /* SubscriptionService_RevenueCat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService_RevenueCat.swift; sourceTree = "<group>"; };
 		1A234567890A0023 /* SubscriptionTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionTestView.swift; sourceTree = "<group>"; };
+		1A234567890A0026 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		1A234567890AFFFD /* EventAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EventAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4E1D393B2E4916FE00638509 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -129,6 +130,7 @@
 			isa = PBXGroup;
 			children = (
 				1A234567890A001D /* RevenueCatConfig.swift */,
+				1A234567890A0026 /* Config.xcconfig */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -354,6 +356,7 @@
 		};
 		1A234567890A000C /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1A234567890A0026 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -385,6 +388,7 @@
 		};
 		1A234567890A000D /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1A234567890A0026 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

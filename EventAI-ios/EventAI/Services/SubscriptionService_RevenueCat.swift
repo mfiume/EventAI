@@ -137,10 +137,10 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
     
     // Price string property - matches original interface
     var monthlyPriceString: String {
-        if let monthlyPackage = currentOffering?.monthly {
-            return monthlyPackage.storeProduct.localizedPriceString
+        guard let monthlyPackage = currentOffering?.monthly else {
+            fatalError("Monthly subscription package not available. Ensure offerings are loaded before accessing price.")
         }
-        return "$4.99" // Fallback price
+        return monthlyPackage.storeProduct.localizedPriceString
     }
     
     // MARK: - RevenueCat Customer Center Integration
