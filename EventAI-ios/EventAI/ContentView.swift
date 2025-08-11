@@ -222,6 +222,7 @@ struct ContentView: View {
                 }
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
             calendarService.requestCalendarAccess()
             adService.initializeAds()
