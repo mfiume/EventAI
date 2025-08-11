@@ -6,7 +6,7 @@ struct PremiumModalView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var localizedPrice: String = "$4.99/month"
+    @State private var localizedPrice: String? = nil
 
     var body: some View {
         GeometryReader { geometry in
@@ -122,9 +122,15 @@ struct PremiumModalView: View {
                         }
                         .disabled(isLoading)
 
-                        Text("\(localizedPrice) • Cancel anytime")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
+                        if let price = localizedPrice {
+                            Text("\(price)/month • Cancel anytime")
+                                .font(.system(size: 14))
+                                .foregroundColor(.gray)
+                        } else {
+                            Text("Cancel anytime")
+                                .font(.system(size: 14))
+                                .foregroundColor(.gray)
+                        }
                         
                         Button("Restore Purchases") {
                             Task {
@@ -183,7 +189,7 @@ struct PremiumModalView: View {
     private func loadLocalizedPrice() async {
         // Use the subscription service's price
         await MainActor.run {
-            localizedPrice = subscriptionService.monthlyPriceString + "/month"
+            localizedPrice = subscriptionService.monthlyPriceString
         }
     }
 

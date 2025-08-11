@@ -154,10 +154,9 @@ struct ContentView: View {
                                         Image(systemName: "checkmark.circle.fill")
                                             .font(.system(size: 16))
                                             .foregroundColor(.green)
-                                        Text("More Conversions (\(premiumDailyLimit) Per Day)")
+                                        Text("More Conversions")
                                             .font(.system(size: 16))
                                             .foregroundColor(.primary)
-                                        Spacer()
                                     }
                                     HStack(spacing: 12) {
                                         Image(systemName: "checkmark.circle.fill")
@@ -166,7 +165,6 @@ struct ContentView: View {
                                         Text("Photo Support")
                                             .font(.system(size: 16))
                                             .foregroundColor(.primary)
-                                        Spacer()
                                     }
                                     HStack(spacing: 12) {
                                         Image(systemName: "checkmark.circle.fill")
@@ -175,7 +173,6 @@ struct ContentView: View {
                                         Text("Ad-Free")
                                             .font(.system(size: 16))
                                             .foregroundColor(.primary)
-                                        Spacer()
                                     }
                                 }
                             }
@@ -208,9 +205,15 @@ struct ContentView: View {
                                     )
                                 }
                                 
-                                Text("$4.99/month • Cancel anytime")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
+                                if let price = subscriptionService.monthlyPriceString {
+                                    Text("\(price)/month • Cancel anytime")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text("Cancel anytime")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             .padding(.horizontal, 20)
                             .padding(.bottom, 40)

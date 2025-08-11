@@ -172,8 +172,8 @@ class SubscriptionService: ObservableObject {
         return products.first { $0.id == monthlySubscriptionID }
     }
     
-    var monthlyPriceString: String {
-        return monthlyProduct?.displayPrice ?? "$4.99"
+    var monthlyPriceString: String? {
+        return monthlyProduct?.displayPrice
     }
 }
 

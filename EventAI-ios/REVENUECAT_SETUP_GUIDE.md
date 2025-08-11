@@ -118,7 +118,7 @@ import RevenueCatUI  // For Customer Center
    - **Product ID**: `eventai_premium_monthly` (exact match)
    - **Reference Name**: EventAI Premium Monthly
    - **Duration**: 1 Month
-   - **Price**: $4.99 (or your preferred price)
+   - **Price**: $0.99 (or your preferred price)
 
 ### 7.2 Review Information
 - **Display Name**: EventAI Premium
@@ -131,7 +131,7 @@ Check Xcode console for RevenueCat logs:
 ```
 🔧 Initializing RevenueCat service...
 ✅ RevenueCat configured with API key
-💰 Monthly subscription loaded: EventAI Premium - $4.99
+💰 Monthly subscription loaded: EventAI Premium - $0.99
 ```
 
 ### 8.2 Common Issues

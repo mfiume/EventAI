@@ -44,7 +44,7 @@ struct SubscriptionTestView: View {
                     isPremium: storeKitService.isPremium,
                     status: storeKitService.subscriptionStatus,
                     expiryDate: storeKitService.expiryDate,
-                    priceString: storeKitService.monthlyPriceString,
+                    priceString: storeKitService.monthlyPriceString ?? "",
                     isLoading: storeKitService.isLoading,
                     error: storeKitService.purchaseError
                 )
@@ -54,7 +54,7 @@ struct SubscriptionTestView: View {
                     isPremium: revenueCatService.isPremium,
                     status: revenueCatService.subscriptionStatus,
                     expiryDate: revenueCatService.expiryDate,
-                    priceString: revenueCatService.monthlyPriceString,
+                    priceString: revenueCatService.monthlyPriceString ?? "",
                     isLoading: revenueCatService.isLoading,
                     error: revenueCatService.purchaseError
                 )
@@ -145,12 +145,14 @@ struct SubscriptionStatusCard: View {
                     .foregroundColor(isPremium ? .green : .red)
             }
             
-            HStack {
-                Text("Price:")
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text(priceString + "/month")
-                    .fontWeight(.medium)
+            if !priceString.isEmpty {
+                HStack {
+                    Text("Price:")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(priceString + "/month")
+                        .fontWeight(.medium)
+                }
             }
             
             if let expiryDate = expiryDate {
