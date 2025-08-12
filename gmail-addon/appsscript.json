@@ -1,0 +1,47 @@
+{
+  "timeZone": "America/New_York",
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Gmail",
+        "serviceId": "gmail",
+        "version": "v1"
+      },
+      {
+        "userSymbol": "Calendar",
+        "serviceId": "calendar",
+        "version": "v3"
+      }
+    ]
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "addOns": {
+    "gmail": {
+      "name": "EventAI",
+      "logoUrl": "https://eventai-api-661796696046.us-central1.run.app/static/logo.png",
+      "primaryColor": "#4285F4",
+      "secondaryColor": "#34A853",
+      "contextualTriggers": [
+        {
+          "unconditional": {},
+          "onTriggerFunction": "buildGmailAddon"
+        }
+      ],
+      "composeTrigger": {
+        "selectActions": [
+          {
+            "text": "Extract Events",
+            "runFunction": "extractEventsFromCompose"
+          }
+        ]
+      }
+    }
+  },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/script.external_request"
+  ]
+}

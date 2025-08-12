@@ -29,6 +29,7 @@ gcloud run deploy $SERVICE_NAME \
   --allow-unauthenticated \
   --port 8080 \
   --set-env-vars ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  --set-env-vars CLAUDE_MODEL=claude-3-5-haiku-20241022 \
   --memory 1Gi \
   --cpu 1 \
   --max-instances 10 \

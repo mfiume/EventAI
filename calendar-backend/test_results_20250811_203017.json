@@ -1,0 +1,858 @@
+[
+  {
+    "test_name": "Trip Planning - Mexico Vacation",
+    "endpoint": "production",
+    "success": true,
+    "latency": 35.34938406944275,
+    "events_found": 15,
+    "expected_events": 15,
+    "accuracy": 100.0,
+    "message": "Successfully created 15 calendar event(s).",
+    "events": [
+      {
+        "title": "Flight AC456 to Cancun",
+        "description": "Flight from Toronto to Cancun - Day 1 of Mexico Family Vacation",
+        "start_date": "2025-03-10T08:00:00-04:00",
+        "end_date": "2025-03-10T14:30:00-04:00",
+        "location": "Toronto Pearson (YYZ), Terminal 1",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Hotel Check-in - The Grand at Moon Palace",
+        "description": "Hotel check-in upon arrival in Cancun",
+        "start_date": "2025-03-10T14:30:00-04:00",
+        "end_date": "2025-03-10T15:30:00-04:00",
+        "location": "The Grand at Moon Palace, Cancun",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Welcome Dinner",
+        "description": "Welcome dinner at hotel restaurant",
+        "start_date": "2025-03-10T18:00:00-04:00",
+        "end_date": "2025-03-10T19:30:00-04:00",
+        "location": "The Grand at Moon Palace Hotel Restaurant",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Chichen Itza Tour",
+        "description": "Guided tour of Chichen Itza with hotel lobby pickup",
+        "start_date": "2025-03-11T09:00:00-04:00",
+        "end_date": "2025-03-11T16:00:00-04:00",
+        "location": "Hotel Lobby",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Cancun Downtown Evening Stroll",
+        "description": "Evening walk through downtown Cancun",
+        "start_date": "2025-03-11T19:30:00-04:00",
+        "end_date": "2025-03-11T21:00:00-04:00",
+        "location": "Cancun Downtown",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Snorkeling at Isla Mujeres",
+        "description": "Snorkeling excursion",
+        "start_date": "2025-03-12T10:00:00-04:00",
+        "end_date": "2025-03-12T13:00:00-04:00",
+        "location": "Isla Mujeres",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Sunset Dinner Cruise",
+        "description": "Dinner cruise at sunset",
+        "start_date": "2025-03-12T19:00:00-04:00",
+        "end_date": "2025-03-12T21:00:00-04:00",
+        "location": "Puerto Cancun Marina",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Family Breakfast",
+        "description": "Family breakfast at hotel",
+        "start_date": "2025-03-13T08:00:00-04:00",
+        "end_date": "2025-03-13T09:30:00-04:00",
+        "location": "The Grand at Moon Palace",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Beach Day",
+        "description": "Beach day at Playa Delfines",
+        "start_date": "2025-03-13T10:00:00-04:00",
+        "end_date": "2025-03-13T16:00:00-04:00",
+        "location": "Playa Delfines",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Shopping at La Isla",
+        "description": "Shopping excursion",
+        "start_date": "2025-03-13T17:00:00-04:00",
+        "end_date": "2025-03-13T19:00:00-04:00",
+        "location": "La Isla Shopping Village",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Jungle Zipline Adventure",
+        "description": "Zipline adventure tour in the jungle",
+        "start_date": "2025-03-14T09:00:00-04:00",
+        "end_date": "2025-03-14T13:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Farewell Dinner",
+        "description": "Farewell dinner at Lorenzillo's restaurant",
+        "start_date": "2025-03-14T18:30:00-04:00",
+        "end_date": "2025-03-14T20:30:00-04:00",
+        "location": "Lorenzillo's",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Morning Swim",
+        "description": "Final morning swim at hotel pool",
+        "start_date": "2025-03-15T10:00:00-04:00",
+        "end_date": "2025-03-15T11:30:00-04:00",
+        "location": "The Grand at Moon Palace Pool",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Hotel Check-out",
+        "description": "Hotel check-out",
+        "start_date": "2025-03-15T12:00:00-04:00",
+        "end_date": "2025-03-15T13:00:00-04:00",
+        "location": "The Grand at Moon Palace",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Return Flight AC457 to Toronto",
+        "description": "Return flight to Toronto YYZ Terminal 1",
+        "start_date": "2025-03-15T15:15:00-04:00",
+        "end_date": "2025-03-15T20:15:00-04:00",
+        "location": "Cancun International Airport",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:26:22.737210"
+  },
+  {
+    "test_name": "Recurring Meeting - Coffee with Laura",
+    "endpoint": "production",
+    "success": true,
+    "latency": 15.562260150909424,
+    "events_found": 1,
+    "expected_events": 1,
+    "accuracy": 100.0,
+    "message": "Successfully created 1 calendar event(s).",
+    "events": [
+      {
+        "title": "Coffee with Laura",
+        "description": "Bi-weekly coffee meeting with Laura",
+        "start_date": "2025-08-19T09:00:00-04:00",
+        "end_date": "2025-08-19T10:00:00-04:00",
+        "location": "The Alchemist",
+        "is_recurring": true,
+        "recurrence_pattern": "FREQ=WEEKLY;INTERVAL=2;UNTIL=20251201T000000",
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:26:38.300541"
+  },
+  {
+    "test_name": "Simple Meeting",
+    "endpoint": "production",
+    "success": true,
+    "latency": 16.39930009841919,
+    "events_found": 2,
+    "expected_events": 2,
+    "accuracy": 100.0,
+    "message": "Successfully created 2 calendar event(s).",
+    "events": [
+      {
+        "title": "Client Meeting - Project Proposal",
+        "description": "Meeting about project proposal",
+        "start_date": "2025-08-13T14:00:00-04:00",
+        "end_date": "2025-08-13T15:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Team Lunch",
+        "description": null,
+        "start_date": "2025-08-15T12:30:00-04:00",
+        "end_date": "2025-08-15T13:30:00-04:00",
+        "location": "Conference Room A",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:26:54.700545"
+  },
+  {
+    "test_name": "Weekly Schedule",
+    "endpoint": "production",
+    "success": true,
+    "latency": 19.206185817718506,
+    "events_found": 5,
+    "expected_events": 5,
+    "accuracy": 100.0,
+    "message": "Successfully created 5 calendar event(s).",
+    "events": [
+      {
+        "title": "Team Standup",
+        "description": "Weekly team standup meeting",
+        "start_date": "2025-08-18T09:00:00-04:00",
+        "end_date": "2025-08-18T10:00:00-04:00",
+        "location": "Conference Room B",
+        "is_recurring": true,
+        "recurrence_pattern": "FREQ=WEEKLY;BYDAY=MO",
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Client Review Meeting",
+        "description": null,
+        "start_date": "2025-08-19T14:00:00-04:00",
+        "end_date": "2025-08-19T15:00:00-04:00",
+        "location": null,
+        "is_recurring": true,
+        "recurrence_pattern": "FREQ=WEEKLY;BYDAY=TU",
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Project Planning Session",
+        "description": null,
+        "start_date": "2025-08-20T10:00:00-04:00",
+        "end_date": "2025-08-20T11:00:00-04:00",
+        "location": null,
+        "is_recurring": true,
+        "recurrence_pattern": "FREQ=WEEKLY;BYDAY=WE",
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Code Review with Dev Team",
+        "description": "Code review session with development team",
+        "start_date": "2025-08-21T15:00:00-04:00",
+        "end_date": "2025-08-21T16:00:00-04:00",
+        "location": null,
+        "is_recurring": true,
+        "recurrence_pattern": "FREQ=WEEKLY;BYDAY=TH",
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Weekly Retrospective",
+        "description": null,
+        "start_date": "2025-08-22T11:00:00-04:00",
+        "end_date": "2025-08-22T12:00:00-04:00",
+        "location": null,
+        "is_recurring": true,
+        "recurrence_pattern": "FREQ=WEEKLY;BYDAY=FR",
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:27:13.907468"
+  },
+  {
+    "test_name": "Conference Schedule",
+    "endpoint": "production",
+    "success": true,
+    "latency": 22.43389105796814,
+    "events_found": 8,
+    "expected_events": 8,
+    "accuracy": 100.0,
+    "message": "Successfully created 8 calendar event(s).",
+    "events": [
+      {
+        "title": "TechConf 2025 - Registration and Welcome Coffee",
+        "description": "Day 1 - Registration and welcome coffee session",
+        "start_date": "2025-08-12T09:00:00-04:00",
+        "end_date": "2025-08-12T10:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "TechConf 2025 - Keynote: The Future of AI",
+        "description": "Day 1 - Keynote presentation on The Future of AI",
+        "start_date": "2025-08-12T10:00:00-04:00",
+        "end_date": "2025-08-12T11:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "TechConf 2025 - Break",
+        "description": "Day 1 - Morning break",
+        "start_date": "2025-08-12T11:30:00-04:00",
+        "end_date": "2025-08-12T12:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "TechConf 2025 - Panel: Machine Learning Ethics",
+        "description": "Day 1 - Panel discussion on Machine Learning Ethics",
+        "start_date": "2025-08-12T12:00:00-04:00",
+        "end_date": "2025-08-12T13:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "TechConf 2025 - Lunch Break",
+        "description": "Day 1 - Lunch break",
+        "start_date": "2025-08-12T13:00:00-04:00",
+        "end_date": "2025-08-12T14:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "TechConf 2025 - Workshop: Building ML Pipelines",
+        "description": "Day 1 - Workshop on Building Machine Learning Pipelines",
+        "start_date": "2025-08-12T14:30:00-04:00",
+        "end_date": "2025-08-12T16:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "TechConf 2025 - Networking Session",
+        "description": "Day 1 - Networking session",
+        "start_date": "2025-08-12T16:00:00-04:00",
+        "end_date": "2025-08-12T17:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "TechConf 2025 - Closing Remarks",
+        "description": "Day 1 - Closing remarks",
+        "start_date": "2025-08-12T17:30:00-04:00",
+        "end_date": "2025-08-12T18:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:27:36.342631"
+  },
+  {
+    "test_name": "Medical Appointments",
+    "endpoint": "production",
+    "success": true,
+    "latency": 20.927300930023193,
+    "events_found": 4,
+    "expected_events": 4,
+    "accuracy": 100.0,
+    "message": "Successfully created 4 calendar event(s).",
+    "events": [
+      {
+        "title": "Dentist Cleaning",
+        "description": "Dental cleaning appointment",
+        "start_date": "2025-03-15T10:30:00-04:00",
+        "end_date": "2025-03-15T11:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Annual Physical with Dr. Smith",
+        "description": "Annual physical examination",
+        "start_date": "2025-03-22T14:00:00-04:00",
+        "end_date": "2025-03-22T15:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Eye Exam",
+        "description": "Eye examination appointment",
+        "start_date": "2025-03-28T11:00:00-04:00",
+        "end_date": "2025-03-28T12:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Cardiologist Follow-up",
+        "description": "Follow-up appointment with cardiologist",
+        "start_date": "2025-04-03T09:30:00-04:00",
+        "end_date": "2025-04-03T10:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:27:57.270348"
+  },
+  {
+    "test_name": "Trip Planning - Mexico Vacation",
+    "endpoint": "staging",
+    "success": true,
+    "latency": 53.924347162246704,
+    "events_found": 15,
+    "expected_events": 15,
+    "accuracy": 100.0,
+    "message": "Successfully created 15 calendar event(s).",
+    "events": [
+      {
+        "title": "Flight to Cancun",
+        "description": "Flight AC456 from Toronto to Cancun",
+        "start_date": "2025-03-10T08:00:00-04:00",
+        "end_date": "2025-03-10T14:30:00-04:00",
+        "location": "Toronto Pearson Airport (YYZ), Terminal 1",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Hotel Check-in at The Grand at Moon Palace",
+        "description": "Check-in and settle in",
+        "start_date": "2025-03-10T14:30:00-04:00",
+        "end_date": "2025-03-10T18:00:00-04:00",
+        "location": "The Grand at Moon Palace, Cancun",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Welcome Dinner",
+        "description": "Welcome dinner at hotel restaurant",
+        "start_date": "2025-03-10T18:00:00-04:00",
+        "end_date": "2025-03-10T20:00:00-04:00",
+        "location": "Hotel Restaurant",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Chichen Itza Guided Tour",
+        "description": "Guided tour with hotel lobby pickup",
+        "start_date": "2025-03-11T09:00:00-04:00",
+        "end_date": "2025-03-11T19:30:00-04:00",
+        "location": "Chichen Itza",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Evening Stroll in Cancun Downtown",
+        "description": "Evening walk and exploration",
+        "start_date": "2025-03-11T19:30:00-04:00",
+        "end_date": "2025-03-11T21:30:00-04:00",
+        "location": "Cancun Downtown",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Snorkeling at Isla Mujeres",
+        "description": "Snorkeling activity",
+        "start_date": "2025-03-12T10:00:00-04:00",
+        "end_date": "2025-03-12T19:00:00-04:00",
+        "location": "Isla Mujeres",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Sunset Dinner Cruise",
+        "description": "Sunset dinner cruise",
+        "start_date": "2025-03-12T19:00:00-04:00",
+        "end_date": "2025-03-12T21:00:00-04:00",
+        "location": "Puerto Cancun Marina",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Family Breakfast",
+        "description": "Family breakfast at hotel",
+        "start_date": "2025-03-13T08:00:00-04:00",
+        "end_date": "2025-03-13T10:00:00-04:00",
+        "location": "Hotel",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Beach Day at Playa Delfines",
+        "description": "Day at the beach",
+        "start_date": "2025-03-13T10:00:00-04:00",
+        "end_date": "2025-03-13T17:00:00-04:00",
+        "location": "Playa Delfines",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Shopping at La Isla Shopping Village",
+        "description": "Shopping trip",
+        "start_date": "2025-03-13T17:00:00-04:00",
+        "end_date": "2025-03-13T19:00:00-04:00",
+        "location": "La Isla Shopping Village",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Jungle Zipline Adventure Tour",
+        "description": "Zipline adventure tour",
+        "start_date": "2025-03-14T09:00:00-04:00",
+        "end_date": "2025-03-14T18:30:00-04:00",
+        "location": "Cancun Jungle",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Farewell Dinner",
+        "description": "Farewell dinner",
+        "start_date": "2025-03-14T18:30:00-04:00",
+        "end_date": "2025-03-14T20:30:00-04:00",
+        "location": "Lorenzillo's",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Morning Swim at Hotel Pool",
+        "description": "Morning swim before check-out",
+        "start_date": "2025-03-15T10:00:00-04:00",
+        "end_date": "2025-03-15T12:00:00-04:00",
+        "location": "Hotel Pool",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Hotel Check-out",
+        "description": "Hotel check-out and departure preparation",
+        "start_date": "2025-03-15T12:00:00-04:00",
+        "end_date": "2025-03-15T15:15:00-04:00",
+        "location": "The Grand at Moon Palace, Cancun",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Return Flight to Toronto",
+        "description": "Flight AC457 back to Toronto",
+        "start_date": "2025-03-15T15:15:00-04:00",
+        "end_date": "2025-03-15T21:45:00-04:00",
+        "location": "Toronto Pearson Airport (YYZ), Terminal 1",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:28:51.195946"
+  },
+  {
+    "test_name": "Recurring Meeting - Coffee with Laura",
+    "endpoint": "staging",
+    "success": true,
+    "latency": 17.79825186729431,
+    "events_found": 1,
+    "expected_events": 1,
+    "accuracy": 100.0,
+    "message": "Successfully created 1 calendar event(s).",
+    "events": [
+      {
+        "title": "Coffee Meeting with Laura",
+        "description": "Bi-weekly coffee meeting with Laura",
+        "start_date": "2025-08-19T09:00:00-04:00",
+        "end_date": "2025-08-19T10:00:00-04:00",
+        "location": "The Alchemist",
+        "is_recurring": true,
+        "recurrence_pattern": "FREQ=WEEKLY;INTERVAL=2;UNTIL=20251201T235959Z",
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:29:08.994839"
+  },
+  {
+    "test_name": "Simple Meeting",
+    "endpoint": "staging",
+    "success": true,
+    "latency": 14.148476123809814,
+    "events_found": 2,
+    "expected_events": 2,
+    "accuracy": 100.0,
+    "message": "Successfully created 2 calendar event(s).",
+    "events": [
+      {
+        "title": "Client Project Proposal Meeting",
+        "description": null,
+        "start_date": "2025-08-13T14:00:00-04:00",
+        "end_date": "2025-08-13T15:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Team Lunch",
+        "description": null,
+        "start_date": "2025-08-15T12:30:00-04:00",
+        "end_date": "2025-08-15T13:30:00-04:00",
+        "location": "Conference Room A",
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:29:23.144038"
+  },
+  {
+    "test_name": "Weekly Schedule",
+    "endpoint": "staging",
+    "success": true,
+    "latency": 17.20142889022827,
+    "events_found": 5,
+    "expected_events": 5,
+    "accuracy": 100.0,
+    "message": "Successfully created 5 calendar event(s).",
+    "events": [
+      {
+        "title": "Team Standup",
+        "description": null,
+        "start_date": "2025-08-11T09:00:00-04:00",
+        "end_date": "2025-08-11T10:00:00-04:00",
+        "location": "Conference Room B",
+        "is_recurring": true,
+        "recurrence_pattern": "weekly on Mondays",
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Client Review Meeting",
+        "description": null,
+        "start_date": "2025-08-12T14:00:00-04:00",
+        "end_date": "2025-08-12T15:00:00-04:00",
+        "location": null,
+        "is_recurring": true,
+        "recurrence_pattern": "weekly on Tuesdays",
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Project Planning Session",
+        "description": null,
+        "start_date": "2025-08-13T10:00:00-04:00",
+        "end_date": "2025-08-13T11:00:00-04:00",
+        "location": null,
+        "is_recurring": true,
+        "recurrence_pattern": "weekly on Wednesdays",
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Code Review with Dev Team",
+        "description": null,
+        "start_date": "2025-08-14T15:00:00-04:00",
+        "end_date": "2025-08-14T16:00:00-04:00",
+        "location": null,
+        "is_recurring": true,
+        "recurrence_pattern": "weekly on Thursdays",
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Weekly Retrospective",
+        "description": null,
+        "start_date": "2025-08-15T11:00:00-04:00",
+        "end_date": "2025-08-15T12:00:00-04:00",
+        "location": null,
+        "is_recurring": true,
+        "recurrence_pattern": "weekly on Fridays",
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:29:40.345794"
+  },
+  {
+    "test_name": "Conference Schedule",
+    "endpoint": "staging",
+    "success": true,
+    "latency": 18.761499881744385,
+    "events_found": 8,
+    "expected_events": 8,
+    "accuracy": 100.0,
+    "message": "Successfully created 8 calendar event(s).",
+    "events": [
+      {
+        "title": "Registration and Welcome Coffee",
+        "description": null,
+        "start_date": "2025-08-12T09:00:00-04:00",
+        "end_date": "2025-08-12T10:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Keynote: The Future of AI",
+        "description": null,
+        "start_date": "2025-08-12T10:00:00-04:00",
+        "end_date": "2025-08-12T11:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Break",
+        "description": null,
+        "start_date": "2025-08-12T11:30:00-04:00",
+        "end_date": "2025-08-12T12:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Panel: Machine Learning Ethics",
+        "description": null,
+        "start_date": "2025-08-12T12:00:00-04:00",
+        "end_date": "2025-08-12T13:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Lunch Break",
+        "description": null,
+        "start_date": "2025-08-12T13:00:00-04:00",
+        "end_date": "2025-08-12T14:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Workshop: Building ML Pipelines",
+        "description": null,
+        "start_date": "2025-08-12T14:30:00-04:00",
+        "end_date": "2025-08-12T16:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Networking Session",
+        "description": null,
+        "start_date": "2025-08-12T16:00:00-04:00",
+        "end_date": "2025-08-12T17:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Closing Remarks",
+        "description": null,
+        "start_date": "2025-08-12T17:30:00-04:00",
+        "end_date": "2025-08-12T18:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:29:59.107573"
+  },
+  {
+    "test_name": "Medical Appointments",
+    "endpoint": "staging",
+    "success": true,
+    "latency": 18.57685899734497,
+    "events_found": 4,
+    "expected_events": 4,
+    "accuracy": 100.0,
+    "message": "Successfully created 4 calendar event(s).",
+    "events": [
+      {
+        "title": "Dentist Cleaning",
+        "description": "Dental cleaning appointment",
+        "start_date": "2026-03-15T10:30:00-04:00",
+        "end_date": "2026-03-15T11:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Annual Physical with Dr. Smith",
+        "description": "Annual physical examination",
+        "start_date": "2026-03-22T14:00:00-04:00",
+        "end_date": "2026-03-22T15:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Eye Exam",
+        "description": "Scheduled eye examination",
+        "start_date": "2026-03-28T11:00:00-04:00",
+        "end_date": "2026-03-28T12:00:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      },
+      {
+        "title": "Cardiologist Follow-up",
+        "description": "Follow-up appointment with cardiologist",
+        "start_date": "2026-04-03T09:30:00-04:00",
+        "end_date": "2026-04-03T10:30:00-04:00",
+        "location": null,
+        "is_recurring": false,
+        "recurrence_pattern": null,
+        "timezone": "America/New_York"
+      }
+    ],
+    "timestamp": "2025-08-11T20:30:17.684990"
+  }
+]

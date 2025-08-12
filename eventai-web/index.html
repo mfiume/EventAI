@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventAI - Natural Language Calendar Events</title>
+    <meta name="description" content="Transform natural language into calendar events with AI. Simply describe your event in plain English, and EventAI creates calendar entries that sync directly with your calendar.">
+    
+    <!-- Open Graph / Social Media Meta Tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://eventai.leveluplife.app/">
+    <meta property="og:title" content="EventAI - Natural Language Calendar Events">
+    <meta property="og:description" content="Transform natural language into calendar events with AI. Simply describe your event in plain English, and EventAI creates calendar entries that sync directly with your calendar.">
+    <meta property="og:image" content="https://eventai.leveluplife.app/images/eventai-hero.jpg">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://eventai.leveluplife.app/">
+    <meta name="twitter:title" content="EventAI - Natural Language Calendar Events">
+    <meta name="twitter:description" content="Transform natural language into calendar events with AI. Simply describe your event in plain English, and EventAI creates calendar entries that sync directly with your calendar.">
+    <meta name="twitter:image" content="https://eventai.leveluplife.app/images/eventai-hero.jpg">
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="images/favicon.ico">
+    
+    <!-- RevenueCat Web SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@revenuecat/purchases-js@1.0.0/dist/purchases.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1 class="logo-text">EventAI</h1>
+                </div>
+                <nav class="nav">
+                    <div class="usage-indicator" id="usageIndicator" style="display: none;">
+                        <span class="usage-text">Daily conversions</span>
+                        <span class="usage-count" id="usageCount">Loading...</span>
+                        <button class="upgrade-btn" id="upgradeBtn">Upgrade</button>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <div class="app-container">
+                <div class="input-section">
+                    <!-- Text Input Area -->
+                    <div class="input-container">
+                        <div class="text-input-wrapper">
+                            <textarea 
+                                id="textInput" 
+                                class="text-input" 
+                                placeholder="Use AI to create calendar events from text and images"
+                                rows="6"
+                            ></textarea>
+                            
+                            <!-- Bottom Toolbar -->
+                            <div class="input-toolbar">
+                                <div class="toolbar-left">
+                                    <!-- Photo Upload Button -->
+                                    <button class="toolbar-btn" id="photoBtn" title="Add Photo">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                                        </svg>
+                                    </button>
+                                    <input type="file" id="photoInput" accept="image/*" style="display: none;">
+                                    
+                                    <!-- Timezone Display -->
+                                    <div class="timezone-display" id="timezoneDisplay">
+                                        <span id="timezoneText">PST</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="toolbar-right">
+                                    <!-- Clear Button -->
+                                    <button class="toolbar-btn clear-btn" id="clearBtn" style="display: none;">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <path d="m15 9-6 6"></path>
+                                            <path d="m9 9 6 6"></path>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Generate Button -->
+                                    <button class="generate-btn" id="generateBtn" disabled>
+                                        <span class="btn-text" id="generateBtnText">Create Events</span>
+                                        <div class="spinner" id="generateSpinner" style="display: none;">
+                                            <div class="spinner-ring"></div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Attached Image Preview -->
+                        <div class="image-preview" id="imagePreview" style="display: none;">
+                            <div class="image-container">
+                                <img id="previewImage" alt="Attached image">
+                                <button class="image-remove-btn" id="removeImageBtn">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="m15 9-6 6"></path>
+                                        <path d="m9 9 6 6"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Examples Section -->
+                    <div class="examples-section" id="examplesSection">
+                        <div class="examples-header">
+                            <h3 class="examples-title">Try these examples</h3>
+                        </div>
+                        <div class="examples-grid">
+                            <button class="example-btn" data-example="Dentist appointment tomorrow at 2pm">
+                                <svg class="example-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    <path d="m9 16 2 2 4-4"></path>
+                                </svg>
+                                <span class="example-text">Dentist appointment tomorrow at 2pm</span>
+                                <svg class="example-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="m9 18 6-6-6-6"></path>
+                                </svg>
+                            </button>
+                            
+                            <button class="example-btn" data-example="Weekly team meeting every Monday 9-10 AM">
+                                <svg class="example-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="m17 3 4 4-4 4"></path>
+                                    <path d="m3 11 4 4-4 4"></path>
+                                    <line x1="7" y1="4" x2="21" y2="4"></line>
+                                    <line x1="7" y1="20" x2="21" y2="20"></line>
+                                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                                </svg>
+                                <span class="example-text">Weekly team meeting every Monday 9-10 AM</span>
+                                <svg class="example-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="m9 18 6-6-6-6"></path>
+                                </svg>
+                            </button>
+                            
+                            <button class="example-btn" data-example="Video call with Sarah next Friday 1-2 PM">
+                                <svg class="example-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 8.862a5.95 5.95 0 0 1-1.654 4.13c-2.441 2.531-4.809 5.17-7.34 7.608C11.83 21.842 10.17 22.838 8.516 22.838c-1.654 0-3.316-.996-4.492-2.238C1.581 18.178.019 15.69.019 12.862c0-2.828 1.562-5.316 3.898-7.738C5.092 3.382 6.754 2.386 8.516 2.386c1.762 0 3.424.996 4.6 2.238l1.538 1.592L16.192 4.624c1.176-1.242 2.838-2.238 4.6-2.238 1.762 0 3.424.996 4.6 2.238C27.328 6.882 28.89 9.37 28.89 12.198"></path>
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                                </svg>
+                                <span class="example-text">Video call with Sarah next Friday 1-2 PM</span>
+                                <svg class="example-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="m9 18 6-6-6-6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Premium Modal -->
+    <div class="modal-overlay" id="premiumModal" style="display: none;">
+        <div class="premium-modal">
+            <div class="modal-header">
+                <button class="modal-close" id="closePremiumModal">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="m15 9-6 6"></path>
+                        <path d="m9 9 6 6"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="modal-content">
+                <div class="modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                        <path d="M8 14l2 2 4-4"></path>
+                    </svg>
+                </div>
+                
+                <h2 class="modal-title">Upgrade to Premium</h2>
+                <p class="modal-subtitle">Get more conversions, remove ads, and unlock priority processing for your events.</p>
+                
+                <div class="upgrade-comparison" id="upgradeComparison" style="display: none;">
+                    <p class="comparison-text" id="comparisonText"></p>
+                </div>
+                
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <path d="m9 11 3 3L22 4"></path>
+                        </svg>
+                        <span class="feature-text">More Conversions</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <path d="m9 11 3 3L22 4"></path>
+                        </svg>
+                        <span class="feature-text">Photo Support</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <path d="m9 11 3 3L22 4"></path>
+                        </svg>
+                        <span class="feature-text">Ad-Free</span>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="upgrade-premium-btn" id="upgradePremiumBtn">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"></polygon>
+                        </svg>
+                        <span>Upgrade to Premium</span>
+                    </button>
+                    <p class="pricing-text" id="pricingText">Cancel anytime</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Preview Modal -->
+    <div class="modal-overlay" id="eventPreviewModal" style="display: none;">
+        <div class="event-preview-modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Events</h2>
+                <div class="modal-header-actions">
+                    <button class="modal-action-btn" id="shareEventsBtn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                            <polyline points="16,6 12,2 8,6"></polyline>
+                            <line x1="12" y1="2" x2="12" y2="15"></line>
+                        </svg>
+                    </button>
+                    <button class="modal-close" id="closeEventPreview">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-content">
+                <div class="events-summary">
+                    <div class="summary-info">
+                        <svg class="summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span class="summary-text" id="eventsSummaryText">Found 0 Events</span>
+                    </div>
+                    <button class="select-all-btn" id="selectAllBtn">Select All</button>
+                </div>
+                
+                <div class="events-container" id="eventsContainer">
+                    <!-- Events will be dynamically inserted here -->
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="add-to-calendar-btn" id="addToCalendarBtn" disabled>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                            <path d="M8 14l2 2 4-4"></path>
+                        </svg>
+                        <span id="addToCalendarText">Add 0 Events to Calendar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Celebration -->
+    <div class="celebration-overlay" id="celebrationOverlay" style="display: none;">
+        <div class="celebration-content">
+            <div class="celebration-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <path d="m9 11 3 3L22 4"></path>
+                </svg>
+            </div>
+            <h2 class="celebration-title">🎉 Success!</h2>
+            <p class="celebration-message" id="celebrationMessage">Added events to your calendar</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

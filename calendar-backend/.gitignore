@@ -63,3 +63,19 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# CRITICAL: API Key files - NEVER commit these!
+production-keys.txt
+staging-keys.txt
+*-keys.txt
+*.key
+*_key.txt
+api-keys*
+
+# Environment-specific files
+.env.production
+.env.staging
+.env.local
+
+# Secrets directory (already handled but being explicit)
+secrets/

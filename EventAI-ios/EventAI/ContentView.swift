@@ -73,6 +73,14 @@ struct ContentView: View {
                         // Clear input and show success state
                         clearAll()
                         showEventPreview = false
+                        
+                        // Show upgrade modal after successful calendar add for free users
+                        if !subscriptionService.isPremium {
+                            showingPremiumModal = true
+                        }
+                    },
+                    onShowPremiumModal: {
+                        showingPremiumModal = true
                     }
                 )
             }
@@ -121,25 +129,38 @@ struct ContentView: View {
                             Spacer()
                             
                             VStack(spacing: 24) {
-                                Text("Upgrade to Premium")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(.primary)
-                                
-                                Image(systemName: "calendar.badge.plus")
-                                    .font(.system(size: 80))
-                                    .foregroundColor(.blue)
+                                VStack(spacing: 16) {
+                                    Text("Upgrade to Premium")
+                                        .font(.system(size: 28, weight: .bold))
+                                        .foregroundColor(.primary)
+                                        .multilineTextAlignment(.center)
+                                    
+                                    Image(systemName: "calendar.badge.plus")
+                                        .font(.system(size: 80))
+                                        .foregroundColor(.blue)
+                                }
                                 
                                 VStack(spacing: 8) {
-                                    Text("Get more conversions, remove ads, and unlock priority processing for your events.")
+                                    Text("Get more daily conversions and unlock priority processing for your events.")
                                         .font(.system(size: 16))
                                         .foregroundColor(.secondary)
                                         .multilineTextAlignment(.center)
                                         .lineLimit(4)
                                         .fixedSize(horizontal: false, vertical: true)
                                     
-                                    // Show upgrade comparison if user is on free tier
-                                    if !subscriptionService.isPremium && dailyLimit > 0 && premiumDailyLimit > dailyLimit {
-                                        Text("Upgrade from \(dailyLimit) to \(premiumDailyLimit) daily conversions")
+                                    // Show remaining conversions if user is on free tier
+                                    if !subscriptionService.isPremium && dailyLimit > 0 {
+                                        let remaining = max(0, dailyLimit - dailyConversionsUsed)
+                                        let remainingText: String
+                                        if remaining == 0 {
+                                            remainingText = "You have no more conversions today"
+                                        } else if remaining == 1 {
+                                            remainingText = "You have 1 more conversion today"
+                                        } else {
+                                            remainingText = "You have \(remaining) more conversions today"
+                                        }
+                                        
+                                        Text(remainingText)
                                             .font(.system(size: 14, weight: .medium))
                                             .foregroundColor(.blue)
                                             .padding(.horizontal, 12)
@@ -170,7 +191,7 @@ struct ContentView: View {
                                         Image(systemName: "checkmark.circle.fill")
                                             .font(.system(size: 16))
                                             .foregroundColor(.green)
-                                        Text("Ad-Free")
+                                        Text("Ad-free Experience")
                                             .font(.system(size: 16))
                                             .foregroundColor(.primary)
                                     }
@@ -567,23 +588,16 @@ struct ContentView: View {
         }
         
         if !isPremium {
-            // Show AdMob interstitial for free users
-            await MainActor.run {
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let window = windowScene.windows.first,
-                   let rootViewController = window.rootViewController {
-                    adService.showInterstitialAd(from: rootViewController) {
-                        Task {
-                            await self.performEventGeneration()
-                        }
-                    }
-                } else {
-                    Task {
-                        await self.performEventGeneration()
-                    }
-                }
-            }
+            #if DEBUG
+            // Skip ads in development builds for faster testing
+            await performEventGeneration()
             return
+            #else
+            // For production: Start API call immediately AND show ad in parallel
+            // This improves UX by processing the request while user views the ad
+            await performEventGenerationWithAd()
+            return
+            #endif
         }
         
         // Premium users skip the ad
@@ -651,6 +665,101 @@ struct ContentView: View {
         }
     }
     
+    private func performEventGenerationWithAd() async {
+        // Start the API call immediately (run in background)
+        let apiTask = Task {
+            return await performEventGenerationForAd()
+        }
+        
+        // Show the ad in parallel
+        await MainActor.run {
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let rootViewController = window.rootViewController {
+                adService.showInterstitialAd(from: rootViewController) {
+                    // Ad is dismissed - now wait for API task to complete and show results
+                    Task {
+                        let result = await apiTask.value
+                        await MainActor.run {
+                            self.handleEventGenerationResult(result)
+                        }
+                    }
+                }
+            } else {
+                // No view controller available, just run API task
+                Task {
+                    let result = await apiTask.value
+                    await MainActor.run {
+                        self.handleEventGenerationResult(result)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func performEventGenerationForAd() async -> (events: [ParsedEvent]?, icsContent: String?, error: Error?) {
+        do {
+            // Determine effective timezone and location
+            let effectiveTimezone = useLocationForTimezone && locationService.inferredTimezone != nil 
+                ? locationService.inferredTimezone! 
+                : selectedTimezone
+            
+            let userLocation = (useLocationForTimezone && locationService.isLocationEnabled) ? locationService.locationString : nil
+            
+            // Prepare text with image context if image is attached
+            var finalText = inputText
+            if selectedImage != nil {
+                if finalText.isEmpty {
+                    finalText = "Please analyze this image and create calendar events from any schedule, meeting, or event information you can see."
+                } else {
+                    finalText += "\n\n[Image attached - please analyze the image for additional schedule information]"
+                }
+            }
+            
+            let response = try await apiService.convertTextToCalendar(
+                text: finalText,
+                timezone: effectiveTimezone.identifier,
+                userLocation: userLocation,
+                image: selectedImage
+            )
+            
+            if response.eventsFound > 0 && response.events != nil && !response.events!.isEmpty {
+                // Refresh usage stats after successful conversion (without skeleton loader)
+                if !subscriptionService.isPremium {
+                    Task {
+                        await refreshUsageFromBackend()
+                    }
+                }
+                return (events: response.events, icsContent: response.icsContent, error: nil)
+            } else {
+                // Only show error alerts for actual API/technical errors, not "no events found" 
+                if !response.message.lowercased().contains("no events") && 
+                   !response.message.lowercased().contains("couldn't find") &&
+                   !response.message.lowercased().contains("no calendar events") {
+                    return (events: nil, icsContent: nil, error: NSError(domain: "EventAI", code: 0, userInfo: [NSLocalizedDescriptionKey: response.message]))
+                }
+                return (events: nil, icsContent: nil, error: nil)
+            }
+        } catch {
+            return (events: nil, icsContent: nil, error: error)
+        }
+    }
+    
+    private func handleEventGenerationResult(_ result: (events: [ParsedEvent]?, icsContent: String?, error: Error?)) {
+        isLoading = false
+        
+        if let error = result.error {
+            alertMessage = "Error: \(error.localizedDescription)"
+            showAlert = true
+        } else if let events = result.events, let icsContent = result.icsContent {
+            // Show event preview
+            currentEvents = events
+            currentICSContent = icsContent
+            showEventPreview = true
+        }
+        // If no events and no error, just do nothing (user can try again)
+    }
+    
     // Common timezones for the picker
     private var commonTimezones: [TimeZone] {
         let identifiers = [
@@ -684,6 +793,7 @@ struct EventPreviewView: View {
     @ObservedObject var subscriptionService: SubscriptionService
     let userTimezone: TimeZone
     let onEventsAdded: (Int) -> Void
+    let onShowPremiumModal: () -> Void
     
     @Environment(\.presentationMode) var presentationMode
     @State private var selectedEvents: Set<UUID> = []
@@ -696,13 +806,14 @@ struct EventPreviewView: View {
     @State private var confettiTrigger: Int = 0
     @State private var showingShareSheet = false
     
-    init(events: [ParsedEvent], icsContent: String, calendarService: CalendarService, subscriptionService: SubscriptionService, userTimezone: TimeZone, onEventsAdded: @escaping (Int) -> Void) {
+    init(events: [ParsedEvent], icsContent: String, calendarService: CalendarService, subscriptionService: SubscriptionService, userTimezone: TimeZone, onEventsAdded: @escaping (Int) -> Void, onShowPremiumModal: @escaping () -> Void) {
         self.events = events
         self.icsContent = icsContent
         self.calendarService = calendarService
         self.subscriptionService = subscriptionService
         self.userTimezone = userTimezone
         self.onEventsAdded = onEventsAdded
+        self.onShowPremiumModal = onShowPremiumModal
         // Select all events by default
         _selectedEvents = State(initialValue: Set(events.map { $0.id }))
         // Use default calendar initially
@@ -801,11 +912,19 @@ struct EventPreviewView: View {
                                 toggleEventSelection(event.id)
                             }
                             
-                            // Add banner ad every 3 events for free users
-                            if !subscriptionService.isPremium && (index + 1) % 3 == 0 && index < events.count - 1 {
-                                BannerAdView()
+                            // Add banner ad every 3 events for free users, but always show at least one
+                            if !subscriptionService.isPremium {
+                                // Show banner after every 3 events, OR if we're at the last event and no banner has been shown yet
+                                let shouldShowBanner = (index + 1) % 3 == 0 && index < events.count - 1
+                                let isLastEventAndNoBannerYet = index == events.count - 1 && events.count <= 3
+                                
+                                if shouldShowBanner || isLastEventAndNoBannerYet {
+                                    BannerAdView {
+                                        onShowPremiumModal()
+                                    }
                                     .frame(height: 60)
                                     .padding(.vertical, 8)
+                                }
                             }
                         }
                         
@@ -1769,44 +1888,45 @@ struct UsageIndicatorView: View {
 
 // MARK: - Banner Ad View
 struct BannerAdView: View {
+    let onTap: () -> Void
+    
     var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Image(systemName: "crown.fill")
-                    .foregroundColor(.yellow)
-                    .font(.caption)
+        Button(action: onTap) {
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: "crown.fill")
+                        .foregroundColor(.yellow)
+                        .font(.caption)
+                    
+                    Text("Upgrade to Premium")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                }
                 
-                Text("Upgrade to Premium")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Text("Ad-free experience")
+                Text("Get more daily conversions")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            
-            Text("Remove ads and get unlimited conversions")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            LinearGradient(
-                colors: [Color.yellow.opacity(0.1), Color.blue.opacity(0.05)],
-                startPoint: .leading,
-                endPoint: .trailing
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                LinearGradient(
+                    colors: [Color.yellow.opacity(0.1), Color.blue.opacity(0.05)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
             )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
-        )
-        .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+            )
+            .cornerRadius(8)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

@@ -1,0 +1,16 @@
+# EventAI API Proxy Service - Routes /api/* to Cloud Run backend
+runtime: nodejs20
+service: api
+
+# Environment variables
+env_variables:
+  NODE_ENV: production
+  CLOUD_RUN_SERVICE: "eventai-api"
+  CLOUD_RUN_REGION: "us-central1"
+  GOOGLE_CLOUD_PROJECT: "levelup-467902"
+
+# Auto-scaling configuration
+automatic_scaling:
+  min_instances: 0
+  max_instances: 5
+  target_cpu_utilization: 0.6

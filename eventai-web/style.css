@@ -1,0 +1,997 @@
+/* EventAI Web App - Exact iOS App Styling */
+
+:root {
+    /* iOS System Colors - Exact matches */
+    --ios-blue: #007AFF;
+    --ios-gray: rgba(142, 142, 147, 1.0);
+    --ios-gray-light: rgba(142, 142, 147, 0.7);
+    --ios-gray-bg: rgba(142, 142, 147, 0.1);
+    --ios-secondary: rgba(60, 60, 67, 0.6);
+    --ios-primary: rgba(0, 0, 0, 1.0);
+    --ios-white: #FFFFFF;
+    --ios-background: #F2F2F7;
+    --ios-separator: rgba(60, 60, 67, 0.29);
+    --ios-green: #34C759;
+    --ios-orange: #FF9500;
+    --ios-yellow: #FFCC00;
+    
+    /* iOS Shadows */
+    --ios-shadow-light: rgba(0, 0, 0, 0.05);
+    --ios-shadow: rgba(0, 0, 0, 0.1);
+}
+
+/* Reset and Base */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--ios-background);
+    color: var(--ios-primary);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* Header - iOS Navigation Bar Style */
+.header {
+    background: var(--ios-white);
+    border-bottom: 1px solid var(--ios-separator);
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.header-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.logo-text {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ios-primary);
+    margin: 0;
+    text-align: center;
+}
+
+/* Usage Indicator - Exact iOS Style */
+.usage-indicator {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(0, 122, 255, 0.05);
+    border: 1px solid rgba(0, 122, 255, 0.1);
+    border-radius: 12px;
+}
+
+.usage-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ios-secondary);
+}
+
+.usage-count {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ios-primary);
+}
+
+.upgrade-btn {
+    font-size: 12px;
+    color: var(--ios-blue);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    opacity: 1;
+}
+
+.upgrade-btn:hover {
+    opacity: 0.6;
+}
+
+/* Main Content */
+.main {
+    padding: 20px 0;
+    min-height: calc(100vh - 100px);
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Input Section - Exact iOS TextEditor Style */
+.input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.text-input-wrapper {
+    position: relative;
+    background: var(--ios-white);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px var(--ios-shadow-light);
+    overflow: hidden;
+}
+
+.text-input {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px 12px 52px 12px; /* Extra bottom padding for toolbar */
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 1.4;
+    background: transparent;
+    color: var(--ios-primary);
+}
+
+.text-input::placeholder {
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 16px;
+}
+
+/* Input Toolbar - Exact iOS Style */
+.input-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background: var(--ios-white);
+    border-top: 1px solid var(--ios-separator);
+}
+
+.toolbar-left,
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--ios-gray-light);
+    transition: all 0.2s ease;
+    padding: 10px;
+}
+
+.toolbar-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-btn.active {
+    color: var(--ios-blue);
+}
+
+.toolbar-btn .icon {
+    width: 20px;
+    height: 20px;
+}
+
+.timezone-display {
+    padding: 4px 8px;
+    background: var(--ios-gray-bg);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ios-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.timezone-display:hover {
+    background: rgba(142, 142, 147, 0.15);
+}
+
+/* Generate Button - iOS Blue Button Style */
+.generate-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--ios-blue);
+    color: var(--ios-white);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 36px;
+}
+
+.generate-btn:disabled {
+    background: rgba(0, 0, 0, 0.5);
+    cursor: not-allowed;
+}
+
+.generate-btn:not(:disabled):hover {
+    opacity: 0.8;
+}
+
+/* Spinner - iOS Style */
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+}
+
+.spinner-ring {
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Image Preview - iOS Style */
+.image-preview {
+    margin-top: 16px;
+}
+
+.image-container {
+    position: relative;
+    display: inline-block;
+    max-width: 200px;
+}
+
+.image-container img {
+    width: 100%;
+    height: auto;
+    max-height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px var(--ios-shadow);
+}
+
+.image-remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    background: var(--ios-white);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px var(--ios-shadow);
+}
+
+.image-remove-btn .icon {
+    width: 14px;
+    height: 14px;
+    color: var(--ios-gray-light);
+}
+
+/* Examples Section - Exact iOS Style */
+.examples-section {
+    background: rgba(0, 122, 255, 0.05);
+    border: 1px solid rgba(0, 122, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+}
+
+.examples-header {
+    margin-bottom: 12px;
+}
+
+.examples-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ios-secondary);
+    margin: 0;
+}
+
+.examples-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Example Button - Exact iOS Style */
+.example-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--ios-white);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px var(--ios-shadow-light);
+}
+
+.example-btn:hover {
+    background: #F8F8F8;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px var(--ios-shadow);
+}
+
+.example-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--ios-blue);
+    flex-shrink: 0;
+}
+
+.example-text {
+    flex: 1;
+    font-size: 12px;
+    color: var(--ios-primary);
+    line-height: 1.3;
+}
+
+.example-chevron {
+    width: 12px;
+    height: 12px;
+    color: rgba(60, 60, 67, 0.3);
+    flex-shrink: 0;
+}
+
+/* Modal Styles - iOS Sheet Style */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 1000;
+    padding: 0;
+}
+
+@media (min-width: 768px) {
+    .modal-overlay {
+        align-items: center;
+        padding: 20px;
+    }
+}
+
+.premium-modal,
+.event-preview-modal {
+    background: var(--ios-white);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: slideUp 0.3s ease-out;
+}
+
+@media (min-width: 768px) {
+    .premium-modal,
+    .event-preview-modal {
+        border-radius: 16px;
+        max-width: 500px;
+        width: auto;
+        min-width: 400px;
+    }
+    
+    .event-preview-modal {
+        max-width: 700px;
+        min-width: 600px;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Modal Header */
+.modal-header {
+    position: sticky;
+    top: 0;
+    background: var(--ios-white);
+    border-bottom: 1px solid var(--ios-separator);
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 16px 16px 0 0;
+    z-index: 10;
+}
+
+.modal-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ios-primary);
+    margin: 0;
+}
+
+.modal-close,
+.modal-action-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--ios-gray-bg);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover,
+.modal-action-btn:hover {
+    background: rgba(142, 142, 147, 0.15);
+}
+
+.modal-close .icon,
+.modal-action-btn .icon {
+    width: 18px;
+    height: 18px;
+    color: var(--ios-secondary);
+}
+
+.modal-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Premium Modal Content */
+.modal-content {
+    padding: 32px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    align-items: center;
+    text-align: center;
+}
+
+.event-preview-modal .modal-content {
+    padding: 16px 20px;
+    text-align: left;
+}
+
+.modal-icon {
+    width: 80px;
+    height: 80px;
+    color: var(--ios-blue);
+    margin-bottom: 16px;
+}
+
+.modal-subtitle {
+    font-size: 16px;
+    color: var(--ios-secondary);
+    margin: 0;
+    max-width: 400px;
+    line-height: 1.5;
+}
+
+/* Feature List */
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.feature-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--ios-green);
+    flex-shrink: 0;
+}
+
+.feature-text {
+    font-size: 16px;
+    color: var(--ios-primary);
+}
+
+/* Modal Actions */
+.modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    width: 100%;
+}
+
+.upgrade-premium-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 280px;
+    padding: 16px 24px;
+    background: var(--ios-blue);
+    color: var(--ios-white);
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upgrade-premium-btn:hover {
+    opacity: 0.8;
+}
+
+.upgrade-premium-btn .btn-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.pricing-text {
+    font-size: 14px;
+    color: var(--ios-secondary);
+    margin: 0;
+}
+
+/* Event Preview Specific Styles */
+.events-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--ios-background);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.summary-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.summary-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--ios-blue);
+}
+
+.summary-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ios-primary);
+}
+
+.select-all-btn {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ios-blue);
+    background: rgba(0, 122, 255, 0.1);
+    border: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.select-all-btn:hover {
+    background: rgba(0, 122, 255, 0.2);
+}
+
+.events-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+/* Event Card - iOS Style */
+.event-card {
+    border: 2px solid transparent;
+    border-radius: 16px;
+    background: var(--ios-white);
+    box-shadow: 0 2px 8px var(--ios-shadow);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.event-card.selected {
+    border-color: rgba(0, 122, 255, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.2);
+    transform: scale(1.02);
+}
+
+.event-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.event-checkbox {
+    width: 20px;
+    height: 20px;
+    color: var(--ios-blue);
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.event-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ios-primary);
+    margin: 0;
+    flex: 1;
+    line-height: 1.3;
+}
+
+.event-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-left: 32px;
+}
+
+/* Recurring Badge */
+.recurring-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba(255, 149, 0, 0.15);
+    color: var(--ios-orange);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    width: fit-content;
+}
+
+.recurring-badge .icon {
+    width: 10px;
+    height: 10px;
+}
+
+/* Time Info */
+.time-info {
+    background: rgba(0, 122, 255, 0.05);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.time-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.time-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--ios-blue);
+    margin-top: 2px;
+}
+
+.time-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.first-occurrence {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ios-blue);
+}
+
+.time-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ios-primary);
+    white-space: pre-line;
+}
+
+.timezone-text {
+    font-size: 12px;
+    color: var(--ios-secondary);
+}
+
+.duration-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ios-blue);
+    background: rgba(0, 122, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: auto;
+    margin-top: 2px;
+}
+
+/* Location and Description */
+.location-info,
+.description-info {
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+
+.location-info {
+    background: rgba(52, 199, 89, 0.05);
+}
+
+.description-info {
+    background: rgba(175, 82, 222, 0.05);
+}
+
+.info-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.location-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--ios-green);
+}
+
+.description-icon {
+    width: 16px;
+    height: 16px;
+    color: #AF52DE;
+}
+
+.info-text {
+    font-size: 14px;
+    color: var(--ios-primary);
+    font-weight: 500;
+}
+
+.description-text {
+    font-size: 12px;
+    color: var(--ios-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Add to Calendar Button */
+.add-to-calendar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 16px 24px;
+    background: var(--ios-blue);
+    color: var(--ios-white);
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 16px;
+}
+
+.add-to-calendar-btn:disabled {
+    background: var(--ios-gray);
+    cursor: not-allowed;
+    transform: scale(0.95);
+}
+
+.add-to-calendar-btn:not(:disabled):hover {
+    opacity: 0.8;
+}
+
+.add-to-calendar-btn .btn-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* Success Celebration */
+.celebration-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.celebration-content {
+    text-align: center;
+    animation: celebrationBounce 0.6s ease-out;
+}
+
+.celebration-icon {
+    width: 120px;
+    height: 120px;
+    color: var(--ios-blue);
+    margin-bottom: 16px;
+    animation: checkmarkSpin 0.8s ease-out;
+}
+
+.celebration-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--ios-primary);
+    margin-bottom: 8px;
+}
+
+.celebration-message {
+    font-size: 20px;
+    color: var(--ios-secondary);
+    margin: 0;
+}
+
+@keyframes celebrationBounce {
+    0% { transform: scale(0.3) translateY(20px); opacity: 0; }
+    50% { transform: scale(1.05) translateY(-10px); opacity: 1; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes checkmarkSpin {
+    0% { transform: rotate(0deg) scale(0.3); }
+    50% { transform: rotate(180deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 12px;
+    }
+    
+    .usage-indicator {
+        position: static;
+        transform: none;
+        margin-top: 8px;
+        font-size: 11px;
+    }
+    
+    .usage-text,
+    .usage-count,
+    .upgrade-btn {
+        font-size: 11px;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .modal-content {
+        padding: 24px 16px;
+    }
+    
+    .event-preview-modal .modal-content {
+        padding: 12px 16px;
+    }
+    
+    .event-details {
+        margin-left: 24px;
+    }
+    
+    .celebration-title {
+        font-size: 24px;
+    }
+    
+    .celebration-message {
+        font-size: 16px;
+    }
+}
+
+/* Utility Classes */
+.icon {
+    width: 24px;
+    height: 24px;
+    stroke-width: 2;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* Scrollbar Styling - iOS Style */
+.events-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.events-container::-webkit-scrollbar-track {
+    background: var(--ios-background);
+    border-radius: 2px;
+}
+
+.events-container::-webkit-scrollbar-thumb {
+    background: var(--ios-separator);
+    border-radius: 2px;
+}
+
+.events-container::-webkit-scrollbar-thumb:hover {
+    background: var(--ios-gray);
+}
+
+/* Focus States - iOS Style */
+button:focus-visible,
+.text-input:focus-visible {
+    outline: 2px solid var(--ios-blue);
+    outline-offset: 2px;
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

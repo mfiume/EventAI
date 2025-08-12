@@ -1,0 +1,50 @@
+# EventAI Web Application - Google App Engine Configuration
+runtime: nodejs20
+
+# Serve static files
+handlers:
+# Serve root as index.html
+- url: /
+  static_files: index.html
+  upload: index.html
+  secure: always
+
+# Serve static assets
+- url: /style.css
+  static_files: style.css
+  upload: style.css
+  secure: always
+
+- url: /script.js
+  static_files: script.js
+  upload: script.js
+  secure: always
+
+- url: /images/(.*)
+  static_files: images/\1
+  upload: images/.*
+  secure: always
+
+# Serve favicon
+- url: /favicon.ico
+  static_files: images/favicon.ico
+  upload: images/favicon.ico
+  secure: always
+
+# Catch-all for single page app (serve index.html for all other routes)
+- url: /.*
+  static_files: index.html
+  upload: index.html
+  secure: always
+
+
+# Environment variables
+env_variables:
+  NODE_ENV: production
+
+# Auto-scaling configuration
+automatic_scaling:
+  min_instances: 0
+  max_instances: 10
+  target_cpu_utilization: 0.6
+  target_throughput_utilization: 0.6

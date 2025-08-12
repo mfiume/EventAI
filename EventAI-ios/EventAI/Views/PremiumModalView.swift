@@ -73,7 +73,7 @@ struct PremiumModalView: View {
                             .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
 
                         // Description (four lines, ellipsized)
-                        Text("Get unlimited calendar events, remove ads, and unlock priority processing for your events.")
+                        Text("Get more daily conversions and unlock priority processing for your events.")
                             .font(.system(size: 16))
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)

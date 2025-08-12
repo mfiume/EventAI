@@ -106,12 +106,26 @@ struct ParsedEvent: Codable, Identifiable {
 @MainActor
 class APIService: ObservableObject {
     private let baseURL: String
+    private let apiKey: String
     private let session = URLSession.shared
     
     init() {
-        // Use production EventAI API (deployed to eventai-api service)
-        self.baseURL = "https://eventai.leveluplife.app/api"
+        // Get configuration from xcconfig via Info.plist
+        guard let baseURL = Bundle.main.infoDictionary?["BACKEND_BASE_URL"] as? String else {
+            fatalError("❌ BACKEND_BASE_URL not found in configuration")
+        }
+        
+        guard let apiKey = Bundle.main.infoDictionary?["API_KEY"] as? String else {
+            fatalError("❌ API_KEY not found in configuration")
+        }
+        
+        self.baseURL = baseURL
+        self.apiKey = apiKey
+        
+        let environment = Bundle.main.infoDictionary?["BUILD_ENVIRONMENT"] as? String ?? "unknown"
         print("🚀 EventAI API configured: \(baseURL)")
+        print("🔑 API Key configured: eak_****...****")  
+        print("🏗️ Environment: \(environment)")
     }
     
     func getUsageStats() async throws -> UsageResponse {
@@ -124,6 +138,7 @@ class APIService: ObservableObject {
         
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "GET"
+        urlRequest.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
         
         do {
             let (data, response) = try await session.data(for: urlRequest)
@@ -176,6 +191,7 @@ class APIService: ObservableObject {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
         
         var formData = Data()
         

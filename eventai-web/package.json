@@ -1,0 +1,27 @@
+{
+  "name": "eventai-web",
+  "version": "1.0.0",
+  "description": "EventAI Web Application - Convert natural language to calendar events",
+  "main": "index.html",
+  "scripts": {
+    "deploy": "./deploy.sh",
+    "serve": "python -m http.server 8000"
+  },
+  "keywords": [
+    "eventai",
+    "calendar",
+    "ai",
+    "nlp",
+    "events",
+    "scheduling"
+  ],
+  "author": "Level Up Life",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mfiume/EventAI"
+  }
+}

@@ -19,6 +19,14 @@ import io
 import hashlib
 import time
 
+# Import Gmail integration
+try:
+    from gmail_endpoints import gmail_router
+    GMAIL_INTEGRATION_ENABLED = True
+except ImportError as e:
+    print(f"Gmail integration not available: {e}")
+    GMAIL_INTEGRATION_ENABLED = False
+
 # Import our BigQuery service
 from bigquery_service import get_bigquery_service
 
@@ -37,6 +45,11 @@ app = FastAPI(
 
 # Import APIRouter
 from fastapi import APIRouter
+
+# Include Gmail integration router if available
+if GMAIL_INTEGRATION_ENABLED:
+    app.include_router(gmail_router)
+    print("✅ Gmail integration enabled")
 
 # CORS middleware
 app.add_middleware(
@@ -61,7 +74,7 @@ else:
 # Initialize BigQuery service for persistent storage
 bq_service = get_bigquery_service()
 
-# Usage limits (temporarily increased for testing - change back for production)
+# Usage limits (production values)
 FREE_DAILY_LIMIT = 2  # Production: 2 free conversions per day
 PREMIUM_DAILY_LIMIT = 20  # Production: 20 premium conversions per day
 
@@ -869,9 +882,15 @@ async def process_calendar_request(text: str, timezone: str, userLocation: Optio
             'anthropic-version': '2023-06-01'
         }
         
+        # Configure max_tokens and model based on environment
+        max_tokens = int(os.getenv("CLAUDE_MAX_TOKENS", "2000"))
+        model = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20241022")
+        print(f"🎛️ Using model: {model}")
+        print(f"🎛️ Using max_tokens: {max_tokens}")
+        
         payload = {
-            "model": "claude-3-5-sonnet-20241022",
-            "max_tokens": 2000,
+            "model": model,
+            "max_tokens": max_tokens,
             "temperature": 0.1,
             "messages": [
                 {
