@@ -122,15 +122,42 @@ struct PremiumModalView: View {
                         }
                         .disabled(isLoading)
 
-                        if let price = localizedPrice {
-                            Text("\(price)/month • Cancel anytime")
-                                .font(.system(size: 14))
-                                .foregroundColor(.gray)
-                        } else {
-                            Text("Cancel anytime")
-                                .font(.system(size: 14))
+                        // Subscription details (Apple requirement)
+                        VStack(spacing: 8) {
+                            if let price = localizedPrice {
+                                Text("EventAI Premium: \(price)/month")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white)
+                            } else {
+                                Text("EventAI Premium: Monthly Subscription")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            Text("Auto-renewable • Cancel anytime")
+                                .font(.system(size: 12))
                                 .foregroundColor(.gray)
                         }
+                        
+                        // Legal links (Apple requirement)
+                        HStack(spacing: 20) {
+                            Button("Terms of Use") {
+                                if let url = URL(string: "https://leveluplife.app/eventai/terms") {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                            .font(.system(size: 12))
+                            .foregroundColor(.blue)
+                            
+                            Button("Privacy Policy") {
+                                if let url = URL(string: "https://leveluplife.app/eventai/privacy") {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                            .font(.system(size: 12))
+                            .foregroundColor(.blue)
+                        }
+                        .padding(.top, 4)
                         
                         Button("Restore Purchases") {
                             Task {
@@ -139,7 +166,7 @@ struct PremiumModalView: View {
                         }
                         .font(.system(size: 16))
                         .foregroundColor(.blue)
-                        .padding(.top, 8)
+                        .padding(.top, 12)
                     }
                     .padding(.horizontal, 20) // Screen edge padding for buttons
                     .padding(.bottom, 40)
