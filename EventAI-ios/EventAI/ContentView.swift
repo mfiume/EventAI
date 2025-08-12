@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var showingImagePicker = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
     @State private var showingPremiumModal = false
+    @State private var showingSubscriptionInfo = false
     @FocusState private var isTextFieldFocused: Bool
     @StateObject private var apiService = APIService()
     @StateObject private var calendarService = CalendarService()
@@ -29,6 +30,17 @@ struct ContentView: View {
     @StateObject private var locationService = LocationService()
     @StateObject private var subscriptionService = SubscriptionService()
     @Environment(\.scenePhase) private var scenePhase
+    
+    private var remainingConversionsText: String {
+        let remaining = max(0, dailyLimit - dailyConversionsUsed)
+        if remaining == 0 {
+            return "You have no more conversions today"
+        } else if remaining == 1 {
+            return "You have 1 more conversion today"
+        } else {
+            return "You have \(remaining) more conversions today"
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -53,6 +65,37 @@ struct ContentView: View {
             .padding()
             .navigationTitle("EventAI")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(trailing:
+                Menu {
+                    Button("About") {
+                        showingSubscriptionInfo = true
+                    }
+                    
+                    Divider()
+                    
+                    Button("Privacy Policy") {
+                        if let url = URL(string: "https://leveluplife.app/eventai/privacy") {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    
+                    Button("Terms of Use") {
+                        if let url = URL(string: "https://leveluplife.app/eventai/terms") {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    Button("Contact Support") {
+                        if let url = URL(string: "https://leveluplife.app/support") {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            )
             .onTapGesture {
                 // Remove focus and dismiss keyboard when tapping outside text field
                 isTextFieldFocused = false
@@ -86,6 +129,18 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingImagePicker) {
                 ImagePicker(image: $selectedImage, sourceType: imageSourceType)
+            }
+            .sheet(isPresented: $showingSubscriptionInfo) {
+                NavigationView {
+                    SubscriptionInfoViewContent()
+                        .navigationTitle("About")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .navigationBarItems(trailing:
+                            Button("Done") {
+                                showingSubscriptionInfo = false
+                            }
+                        )
+                }
             }
             .fullScreenCover(isPresented: $showingPremiumModal) {
                 // Light-themed Premium Modal
@@ -150,17 +205,7 @@ struct ContentView: View {
                                     
                                     // Show remaining conversions if user is on free tier
                                     if !subscriptionService.isPremium && dailyLimit > 0 {
-                                        let remaining = max(0, dailyLimit - dailyConversionsUsed)
-                                        let remainingText: String
-                                        if remaining == 0 {
-                                            remainingText = "You have no more conversions today"
-                                        } else if remaining == 1 {
-                                            remainingText = "You have 1 more conversion today"
-                                        } else {
-                                            remainingText = "You have \(remaining) more conversions today"
-                                        }
-                                        
-                                        Text(remainingText)
+                                        Text(remainingConversionsText)
                                             .font(.system(size: 14, weight: .medium))
                                             .foregroundColor(.blue)
                                             .padding(.horizontal, 12)
@@ -2313,6 +2358,195 @@ func parseDayNamesFromByDay(_ byDay: String) -> [String] {
     }
     
     return result
+}
+
+// MARK: - About View Content
+struct SubscriptionInfoViewContent: View {
+    @Environment(\.openURL) private var openURL
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // App title
+                VStack(alignment: .leading) {
+                    Text("EventAI")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    Text("AI-powered calendar events")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.bottom, 10)
+                
+                // Subscription Information Section
+                GroupBox("Subscription Information") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SubscriptionDetailRow(title: "Title", value: "EventAI Premium")
+                        SubscriptionDetailRow(title: "Length", value: "1 Month (Auto-Renewable)")
+                        SubscriptionDetailRow(title: "Price", value: "$0.99 USD per month")
+                    }
+                    .padding(.vertical, 8)
+                }
+                .padding(.bottom, 16)
+                
+                // Features Section
+                GroupBox("Premium Features") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        FeatureItem(text: "20 calendar conversions per day")
+                        FeatureItem(text: "Ad-free experience")
+                    }
+                    .padding(.vertical, 8)
+                }
+                .padding(.bottom, 8)
+                
+                // Subscription Terms
+                GroupBox("Subscription Terms") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        BulletPointText(text: "Subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period")
+                        BulletPointText(text: "Account will be charged for renewal within 24 hours prior to the end of the current period")
+                        BulletPointText(text: "You can manage and cancel your subscriptions by going to your account settings on the App Store after purchase")
+                        BulletPointText(text: "Payment will be charged to your Apple ID account at confirmation of purchase")
+                    }
+                    .padding(.vertical, 8)
+                }
+                .padding(.bottom, 16)
+                
+                // App Information
+                GroupBox("App Information") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Version")
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
+                        }
+                        HStack {
+                            Text("API")
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text("eventai.leveluplife.app")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .font(.callout)
+                    .padding(.vertical, 8)
+                }
+                .padding(.bottom, 16)
+                
+                // Legal Links Section
+                GroupBox("Legal Information") {
+                    VStack(spacing: 12) {
+                        // Privacy Policy Link
+                        Button(action: {
+                            if let url = URL(string: "https://leveluplife.app/eventai/privacy") {
+                                openURL(url)
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "shield.checkerboard")
+                                    .foregroundColor(.blue)
+                                Text("Privacy Policy")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "arrow.up.right.square")
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                        }
+                        
+                        Divider()
+                        
+                        // Terms of Use Link
+                        Button(action: {
+                            if let url = URL(string: "https://leveluplife.app/eventai/terms") {
+                                openURL(url)
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "doc.text")
+                                    .foregroundColor(.blue)
+                                Text("Terms of Use (EULA)")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "arrow.up.right.square")
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                        }
+                    }
+                }
+                
+                // Contact Information
+                GroupBox("Support") {
+                    Button(action: {
+                        if let url = URL(string: "https://leveluplife.app/support") {
+                            openURL(url)
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "questionmark.circle")
+                                .foregroundColor(.blue)
+                            Text("Contact Support")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "arrow.up.right.square")
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+}
+
+struct SubscriptionDetailRow: View {
+    let title: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(title)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+struct FeatureItem: View {
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.green)
+                .font(.system(size: 14))
+            Text(text)
+                .font(.system(size: 14))
+            Spacer()
+        }
+    }
+}
+
+struct BulletPointText: View {
+    let text: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text("•")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(text)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
 }
 
 #Preview {
