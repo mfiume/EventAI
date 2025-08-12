@@ -91,8 +91,14 @@ class AdService: NSObject, ObservableObject {
     }
     
     func showInterstitialAd(from viewController: UIViewController, completion: @escaping () -> Void) {
+        print("🎯 showInterstitialAd called")
+        print("   - interstitialAd: \(interstitialAd != nil ? "loaded" : "nil")")
+        print("   - isInterstitialLoaded: \(isInterstitialLoaded)")
+        print("   - isAdMobInitialized: \(isAdMobInitialized)")
+        
         guard let interstitialAd = interstitialAd, isInterstitialLoaded else {
             print("⚠️ Interstitial ad not ready, proceeding without ad")
+            print("   - Reason: interstitialAd=\(interstitialAd != nil), isLoaded=\(isInterstitialLoaded)")
             completion()
             return
         }

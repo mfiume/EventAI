@@ -67,9 +67,10 @@ struct PremiumModalView: View {
                             .shadow(color: .black, radius: 1, x: 0, y: 1)
 
                         // Large app icon
-                        Image(systemName: "calendar.badge.plus")
-                            .font(.system(size: 80))
-                            .foregroundColor(.blue)
+                        Image("LaunchImage")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 80, height: 80)
                             .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
 
                         // Description (four lines, ellipsized)

@@ -430,7 +430,7 @@ struct ContentView: View {
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                 
                 if inputText.isEmpty && selectedImage == nil && !isTextFieldFocused {
-                    Text("Use AI to create calendar events from text and images")
+                    Text("Use AI to create calendar events from text, email, and images")
                         .foregroundColor(.gray.opacity(0.6))
                         .font(.body)
                         .padding(.horizontal, 16)
@@ -633,16 +633,10 @@ struct ContentView: View {
         }
         
         if !isPremium {
-            #if DEBUG
-            // Skip ads in development builds for faster testing
-            await performEventGeneration()
-            return
-            #else
-            // For production: Start API call immediately AND show ad in parallel
+            // Show ads for all non-premium users (both debug and production)
             // This improves UX by processing the request while user views the ad
             await performEventGenerationWithAd()
             return
-            #endif
         }
         
         // Premium users skip the ad
