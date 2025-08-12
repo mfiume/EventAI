@@ -159,11 +159,7 @@ From: {request.sender}
 {request.email_content}
         """.strip()
         
-        # Call EventAI's existing conversion logic
-        # Import the existing convert function from main.py
-        from main import convert_email_to_events
-        
-        # Process the email content
+        # Process the email content using EventAI logic
         result = await convert_email_to_events(
             text=email_text,
             timezone=request.timezone,

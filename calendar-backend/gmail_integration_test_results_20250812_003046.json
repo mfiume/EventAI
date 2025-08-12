@@ -1,0 +1,136 @@
+{
+  "summary": {
+    "total_tests": 8,
+    "passed_tests": 6,
+    "failed_tests": 2,
+    "success_rate": 75.0,
+    "total_duration": 1.0982110500335693,
+    "endpoint_tested": "https://eventai-api-staging-661796696046.us-central1.run.app",
+    "timestamp": "2025-08-12T00:30:46.388393"
+  },
+  "detailed_results": [
+    {
+      "test_name": "Health Endpoints",
+      "status": "PASS",
+      "duration": 0.17882084846496582,
+      "result": {
+        "main_health": {
+          "status": "healthy",
+          "service": "EventAI API"
+        },
+        "gmail_health": {
+          "status": "healthy",
+          "service": "EventAI Gmail Integration",
+          "version": "1.0.0",
+          "oauth_configured": false,
+          "timestamp": "2025-08-12T04:30:45.477017"
+        },
+        "message": "Health checks passed. OAuth configured: False"
+      },
+      "error": null,
+      "timestamp": "2025-08-12T00:30:45.467028"
+    },
+    {
+      "test_name": "Simple Email Extraction",
+      "status": "FAIL",
+      "duration": 0.09480929374694824,
+      "result": null,
+      "error": "Extraction not successful: {'success': False, 'events_found': 0, 'events': None, 'message': 'Failed to process email', 'ics_content': None, 'error': \"cannot import name 'convert_email_to_events' from 'main' (/app/main.py)\"}",
+      "timestamp": "2025-08-12T00:30:45.561883"
+    },
+    {
+      "test_name": "Complex Email Extraction",
+      "status": "FAIL",
+      "duration": 0.0832672119140625,
+      "result": null,
+      "error": "Complex extraction not successful: {'success': False, 'events_found': 0, 'events': None, 'message': 'Failed to process email', 'ics_content': None, 'error': \"cannot import name 'convert_email_to_events' from 'main' (/app/main.py)\"}",
+      "timestamp": "2025-08-12T00:30:45.645739"
+    },
+    {
+      "test_name": "No Events Email",
+      "status": "PASS",
+      "duration": 0.11339282989501953,
+      "result": {
+        "events_found": 0,
+        "message": "Failed to process email",
+        "success": true,
+        "details": "Correctly identified email with no calendar events"
+      },
+      "error": null,
+      "timestamp": "2025-08-12T00:30:45.759718"
+    },
+    {
+      "test_name": "Travel Itinerary Extraction",
+      "status": "PASS",
+      "duration": 0.10758090019226074,
+      "result": {
+        "events_found": 0,
+        "events": null,
+        "message": "Failed to process email",
+        "success": false,
+        "details": "Found 0 event(s) in travel itinerary"
+      },
+      "error": null,
+      "timestamp": "2025-08-12T00:30:45.867364"
+    },
+    {
+      "test_name": "OAuth Endpoints",
+      "status": "PASS",
+      "duration": 0.09996795654296875,
+      "result": {
+        "oauth_initiation": false,
+        "auth_url_generated": false,
+        "message": "OAuth endpoints accessible",
+        "details": "OAuth flow can be initiated (requires manual testing for full flow)"
+      },
+      "error": null,
+      "timestamp": "2025-08-12T00:30:45.967410"
+    },
+    {
+      "test_name": "Error Handling",
+      "status": "PASS",
+      "duration": 0.1563401222229004,
+      "result": {
+        "error_handling": true,
+        "malformed_request_handled": true,
+        "empty_request_handled": true,
+        "message": "API error handling working correctly"
+      },
+      "error": null,
+      "timestamp": "2025-08-12T00:30:46.123811"
+    },
+    {
+      "test_name": "Performance Benchmarks",
+      "status": "PASS",
+      "duration": 0.26403188705444336,
+      "result": {
+        "performance_results": [
+          {
+            "case": "Short email",
+            "duration": 0.07633686065673828,
+            "success": true,
+            "content_length": 23
+          },
+          {
+            "case": "Medium email",
+            "duration": 0.09785866737365723,
+            "success": true,
+            "content_length": 460
+          },
+          {
+            "case": "Long email",
+            "duration": 0.089630126953125,
+            "success": true,
+            "content_length": 2100
+          }
+        ],
+        "average_duration": 0.08794188499450684,
+        "all_under_60s": true,
+        "message": "Average processing time: 0.09s",
+        "details": "Performance benchmarking completed"
+      },
+      "error": null,
+      "timestamp": "2025-08-12T00:30:46.387872"
+    }
+  ]
+}
