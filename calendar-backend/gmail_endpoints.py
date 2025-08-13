@@ -35,6 +35,7 @@ class EmailExtractionRequest(BaseModel):
     sender: Optional[str] = ""
     timezone: str = "UTC"
     user_email: Optional[str] = None
+    email_date: Optional[str] = None  # When the email was sent
 
 class CalendarSelectionRequest(BaseModel):
     calendar_id: str
@@ -173,7 +174,8 @@ From: {request.sender}
             text=email_text,
             timezone=request.timezone,
             user_location=None,  # Gmail doesn't have location context
-            image=None
+            image=None,
+            email_date=request.email_date
         )
         
         logger.info(f"EventAI processing complete. Found {result.get('eventsFound', 0)} events")
@@ -328,7 +330,7 @@ async def gmail_health_check():
     }
 
 # Helper function to convert email to events
-async def convert_email_to_events(text: str, timezone: str, user_location: Optional[str], image) -> Dict[str, Any]:
+async def convert_email_to_events(text: str, timezone: str, user_location: Optional[str], image, email_date: Optional[str] = None) -> Dict[str, Any]:
     """Convert email content to calendar events using EventAI logic"""
     try:
         # We'll implement the actual conversion using the same logic as the main convert endpoint
@@ -339,34 +341,64 @@ async def convert_email_to_events(text: str, timezone: str, user_location: Optio
             raise ValueError("Anthropic API key not configured")
         
         # Get current date for context
-        from datetime import datetime
+        from datetime import datetime, timedelta
         import pytz
+        from dateutil import parser
         
         # Get current date in the user's timezone
         user_tz = pytz.timezone(timezone)
         current_date = datetime.now(user_tz).strftime("%Y-%m-%d")
         current_day = datetime.now(user_tz).strftime("%A, %B %d, %Y")
         
-        # Prepare the prompt for Claude
+        # Parse email date and use it as reference point
+        email_date_context = ""
+        email_reference_date = current_date  # Default to today
+        email_reference_day = current_day
+        
+        if email_date:
+            try:
+                # Parse the email date and convert to user's timezone
+                email_dt = parser.parse(email_date)
+                if email_dt.tzinfo is None:
+                    email_dt = email_dt.replace(tzinfo=pytz.UTC)
+                email_dt_user_tz = email_dt.astimezone(user_tz)
+                email_reference_date = email_dt_user_tz.strftime("%Y-%m-%d")
+                email_reference_day = email_dt_user_tz.strftime("%A, %B %d, %Y")
+                email_date_context = f"Email was sent on: {email_reference_day}"
+            except:
+                # If parsing fails, use current date
+                email_date_context = "Email date could not be parsed, using current date as reference"
+        else:
+            # No email date provided, assume recent
+            email_date_context = "Email date not provided, assuming recent email"
+        
+        # Prepare the prompt for Claude  
         prompt = f"""
 Please analyze the following email content and extract any calendar events, meetings, appointments, or time-based commitments.
 
-IMPORTANT CONTEXT:
-- Today's date is: {current_day} ({current_date})
-- Use this date as reference for relative terms like "tomorrow", "next week", "this Friday", etc.
+CONTEXT FOR DATE INTERPRETATION:
+- Today's actual date is: {current_day} ({current_date}) 
+- {email_date_context}
+- Email reference date for "tomorrow", "next week", etc: {email_reference_day} ({email_reference_date})
+
+CRITICAL INSTRUCTIONS:
+1. If this is an old email (email date is before today), calculate relative dates FROM THE EMAIL DATE, not from today
+2. "Tomorrow" in the email means the day after {email_reference_date} (which would be {(datetime.strptime(email_reference_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')})
+3. All events should be interpreted relative to when the email was sent
+4. Use the year {datetime.strptime(email_reference_date, '%Y-%m-%d').year} for events unless explicitly specified otherwise
 
 Email Content:
 {text}
 
 For each event found, provide:
-- Title (concise but descriptive)
+- Title (concise but descriptive)  
 - Start date and time in ISO format (use timezone: {timezone})
 - End date and time in ISO format (estimate duration if not specified)
 - Location (if mentioned)
 - Description (brief)
 - Whether it's recurring (true/false)
 
-If no events are found, respond with "No calendar events found in this email."
+REMEMBER: Use {email_reference_date} as the base date for all relative date calculations!
 
 Output in this exact JSON format:
 {{

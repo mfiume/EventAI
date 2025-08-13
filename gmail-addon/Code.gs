@@ -14,12 +14,12 @@ function buildGmailAddon(e) {
   console.log('Building Gmail addon interface');
   
   try {
-    // Create the main card
+    // Create the main card with iOS-style white theme
     var card = CardService.newCardBuilder()
       .setHeader(CardService.newCardHeader()
         .setTitle('EventAI')
-        .setSubtitle('Extract events from emails')
-        .setImageUrl('https://eventai-api-661796696046.us-central1.run.app/static/logo.png')
+        .setSubtitle('AI-Powered Calendar Assistant')
+        .setImageUrl('https://eventai.leveluplife.app/api/static/eventai-icon.png')
         .setImageStyle(CardService.ImageStyle.CIRCLE))
       .addSection(buildMainSection(e))
       .build();
@@ -36,14 +36,18 @@ function buildGmailAddon(e) {
  */
 function buildMainSection(e) {
   var section = CardService.newCardSection()
-    .setHeader('📅 Extract Calendar Events');
+    .setHeader('📅 AI Calendar Event Extraction');
+  
+  // iOS-style welcome message
+  section.addWidget(CardService.newTextParagraph()
+    .setText('<font color="#666666">Transform your emails into calendar events instantly using advanced AI technology.</font>'));
   
   // Check if we have access to current email
   console.log('Event object:', JSON.stringify(e));
   if (e && e.messageMetadata) {
-    // Extract Events button
+    // Extract Events button - iOS style primary button
     var extractButton = CardService.newTextButton()
-      .setText('🚀 Extract Events from this Email')
+      .setText('🎯 Extract Events from Email')
       .setOnClickAction(CardService.newAction()
         .setFunctionName('extractEventsFromCurrentEmail')
         .setParameters({messageId: e.messageMetadata.messageId}))
@@ -61,21 +65,30 @@ function buildMainSection(e) {
                     (e.gmail && e.gmail.subject) ||
                     'No subject available';
     }
-    section.addWidget(CardService.newTextParagraph()
-      .setText('📧 Current email: ' + emailSubject));
+    // Current email info with iOS styling
+    section.addWidget(CardService.newDecoratedText()
+      .setTopLabel('Current Email')
+      .setText(emailSubject)
+      .setStartIcon(CardService.newIconImage().setIcon(CardService.Icon.EMAIL))
+      .setWrapText(true));
   } else {
-    // No email selected
+    // No email selected - iOS style empty state
     section.addWidget(CardService.newTextParagraph()
-      .setText('📧 Open an email to extract calendar events from it.'));
+      .setText('<font color="#999999">📧 Please open an email to begin extracting calendar events.</font>'));
   }
   
-  // Instructions
-  section.addWidget(CardService.newTextParagraph()
-    .setText('💡 EventAI will analyze your email content and extract any meetings, appointments, or events it finds.'));
+  // Feature highlights - iOS style
+  var featuresSection = CardService.newCardSection()
+    .setHeader('✨ What EventAI Can Extract');
   
-  // Settings button
+  featuresSection.addWidget(CardService.newTextParagraph()
+    .setText('• Meeting invitations & appointments\n• Event announcements & schedules\n• Travel itineraries & reservations\n• Deadline reminders & tasks'));
+  
+  section.addWidget(CardService.newDivider());
+  
+  // Settings button - iOS style secondary
   var settingsButton = CardService.newTextButton()
-    .setText('⚙️ Settings')
+    .setText('⚙️ Settings & Info')
     .setOnClickAction(CardService.newAction()
       .setFunctionName('showSettings'))
     .setTextButtonStyle(CardService.TextButtonStyle.TEXT);
@@ -136,7 +149,8 @@ function processEmailForEvents(emailData, messageId) {
       subject: emailData.subject,
       sender: emailData.sender,
       timezone: userTimezone,
-      user_email: Session.getActiveUser().getEmail()
+      user_email: Session.getActiveUser().getEmail(),
+      email_date: emailData.date  // Pass the email date for proper context
     });
     
     if (response.success && response.events_found > 0) {
@@ -329,48 +343,63 @@ function extractBodyFromPayload(payload) {
 function buildEventsPreviewCard(events, message) {
   var card = CardService.newCardBuilder()
     .setHeader(CardService.newCardHeader()
-      .setTitle('EventAI')
-      .setSubtitle('Found ' + events.length + ' event(s)'));
+      .setTitle('EventAI Results')
+      .setSubtitle('Successfully found ' + events.length + ' event(s)')
+      .setImageUrl('https://eventai.leveluplife.app/api/static/eventai-icon.png')
+      .setImageStyle(CardService.ImageStyle.CIRCLE));
   
-  // Message section
+  // Success message with iOS styling
   var messageSection = CardService.newCardSection()
     .addWidget(CardService.newTextParagraph()
-      .setText('✅ ' + message));
+      .setText('<font color="#34C759">✅ ' + message + '</font>'));
   
   card.addSection(messageSection);
   
-  // Events section
+  // Events section with iOS-style cards
   var eventsSection = CardService.newCardSection()
     .setHeader('📅 Extracted Events');
   
   events.forEach(function(event, index) {
-    var eventWidget = CardService.newDecoratedText()
-      .setTopLabel('Event ' + (index + 1))
-      .setText(event.title || 'Untitled Event')
-      .setBottomLabel(formatEventTime(event.start_date, event.end_date))
-      .setWrapText(true);
-    
+    // Build bottom label with time, location, and description
+    var bottomLabel = formatEventTime(event.start_date, event.end_date);
     if (event.location) {
-      eventWidget.setBottomLabel(formatEventTime(event.start_date, event.end_date) + ' • ' + event.location);
+      bottomLabel += ' • ' + event.location;
+    }
+    if (event.description) {
+      bottomLabel += '\n' + event.description;
     }
     
+    var eventWidget = CardService.newDecoratedText()
+      .setTopLabel('Event ' + (index + 1))
+      .setText('<b>' + (event.title || 'Untitled Event') + '</b>')
+      .setBottomLabel(bottomLabel)
+      .setStartIcon(CardService.newIconImage().setIcon(CardService.Icon.CLOCK))
+      .setWrapText(true);
+    
     eventsSection.addWidget(eventWidget);
+    
+    // Add divider between events (except for last one)
+    if (index < events.length - 1) {
+      eventsSection.addWidget(CardService.newDivider());
+    }
   });
   
   card.addSection(eventsSection);
   
-  // Action buttons
+  // Action buttons with iOS-style design
   var actionsSection = CardService.newCardSection();
   
+  // Primary action button
   var addToCalendarButton = CardService.newTextButton()
-    .setText('📅 Add to Google Calendar')
+    .setText('📅 Add to My Calendar')
     .setOnClickAction(CardService.newAction()
       .setFunctionName('showCalendarSelection')
       .setParameters({events: JSON.stringify(events)}))
     .setTextButtonStyle(CardService.TextButtonStyle.FILLED);
   
+  // Secondary action button  
   var backButton = CardService.newTextButton()
-    .setText('← Back')
+    .setText('← Extract More Events')
     .setOnClickAction(CardService.newAction()
       .setFunctionName('buildGmailAddon'))
     .setTextButtonStyle(CardService.TextButtonStyle.TEXT);
@@ -397,32 +426,48 @@ function showCalendarSelection(e) {
     var card = CardService.newCardBuilder()
       .setHeader(CardService.newCardHeader()
         .setTitle('Select Calendar')
-        .setSubtitle('Choose where to add events'));
+        .setSubtitle('Choose destination for your events')
+        .setImageUrl('https://eventai.leveluplife.app/api/static/eventai-icon.png')
+        .setImageStyle(CardService.ImageStyle.CIRCLE));
     
     var section = CardService.newCardSection()
-      .setHeader('📅 Available Calendars');
+      .setHeader('📅 Available Calendars')
+      .addWidget(CardService.newTextParagraph()
+        .setText('<font color="#666666">Select which Google Calendar to add your extracted events to:</font>'));
     
     if (calendars.length === 0) {
       section.addWidget(CardService.newTextParagraph()
-        .setText('No calendars found. Please check your Google Calendar access.'));
+        .setText('<font color="#FF3B30">❌ No writable calendars found. Please check your Google Calendar permissions.</font>'));
     } else {
-      calendars.forEach(function(calendar) {
-        var calendarButton = CardService.newTextButton()
-          .setText('📅 ' + calendar.name)
-          .setOnClickAction(CardService.newAction()
-            .setFunctionName('addEventsToCalendar')
-            .setParameters({
-              calendarId: calendar.id,
-              events: JSON.stringify(events),
-              calendarName: calendar.name
-            }))
-          .setTextButtonStyle(CardService.TextButtonStyle.TEXT);
+      calendars.forEach(function(calendar, index) {
+        var calendarIcon = calendar.primary ? CardService.Icon.STAR : CardService.Icon.BOOKMARK;
+        var calendarLabel = calendar.primary ? calendar.name + ' (Primary)' : calendar.name;
         
-        section.addWidget(calendarButton);
+        var calendarWidget = CardService.newDecoratedText()
+          .setTopLabel('Calendar ' + (index + 1))
+          .setText('<b>' + calendarLabel + '</b>')
+          .setStartIcon(CardService.newIconImage().setIcon(calendarIcon))
+          .setButton(CardService.newTextButton()
+            .setText('Add Here')
+            .setOnClickAction(CardService.newAction()
+              .setFunctionName('addEventsToCalendar')
+              .setParameters({
+                calendarId: calendar.id,
+                events: JSON.stringify(events),
+                calendarName: calendar.name
+              }))
+            .setTextButtonStyle(CardService.TextButtonStyle.FILLED));
+        
+        section.addWidget(calendarWidget);
+        
+        if (index < calendars.length - 1) {
+          section.addWidget(CardService.newDivider());
+        }
       });
     }
     
     // Back button
+    section.addWidget(CardService.newDivider());
     var backButton = CardService.newTextButton()
       .setText('← Back to Events')
       .setOnClickAction(CardService.newAction()
@@ -517,40 +562,57 @@ function addEventsToCalendar(e) {
 function buildResultsCard(createdCount, failedCount, calendarName, results) {
   var card = CardService.newCardBuilder()
     .setHeader(CardService.newCardHeader()
-      .setTitle('Events Added')
-      .setSubtitle(createdCount + ' successful, ' + failedCount + ' failed'));
+      .setTitle('Calendar Update Complete')
+      .setSubtitle(createdCount + ' events successfully added')
+      .setImageUrl('https://eventai.leveluplife.app/api/static/eventai-icon.png')
+      .setImageStyle(CardService.ImageStyle.CIRCLE));
   
-  // Summary section
+  // Success summary with iOS styling
   var summarySection = CardService.newCardSection()
     .addWidget(CardService.newTextParagraph()
-      .setText('✅ Successfully added ' + createdCount + ' event(s) to "' + calendarName + '"'));
+      .setText('<font color="#34C759"><b>✅ Success!</b></font>'))
+    .addWidget(CardService.newTextParagraph()
+      .setText('Added <b>' + createdCount + '</b> event(s) to <b>"' + calendarName + '"</b>'));
   
   if (failedCount > 0) {
     summarySection.addWidget(CardService.newTextParagraph()
-      .setText('❌ Failed to add ' + failedCount + ' event(s)'));
+      .setText('<font color="#FF3B30">❌ ' + failedCount + ' event(s) failed to add</font>'));
   }
   
   card.addSection(summarySection);
   
-  // Results details
+  // Results details with iOS-style cards
   if (results.length > 0) {
     var detailsSection = CardService.newCardSection()
-      .setHeader('Details');
+      .setHeader('📋 Event Details');
     
-    results.forEach(function(result) {
-      var status = result.success ? '✅' : '❌';
-      detailsSection.addWidget(CardService.newTextParagraph()
-        .setText(status + ' ' + result.title));
+    results.forEach(function(result, index) {
+      var statusColor = result.success ? '#34C759' : '#FF3B30';
+      var statusIcon = result.success ? '✅' : '❌';
+      var statusText = result.success ? 'Added successfully' : ('Failed: ' + (result.error || 'Unknown error'));
+      
+      var resultWidget = CardService.newDecoratedText()
+        .setTopLabel('Event ' + (index + 1))
+        .setText('<b>' + result.title + '</b>')
+        .setBottomLabel('<font color="' + statusColor + '">' + statusIcon + ' ' + statusText + '</font>')
+        .setStartIcon(CardService.newIconImage().setIcon(CardService.Icon.CLOCK))
+        .setWrapText(true);
+      
+      detailsSection.addWidget(resultWidget);
+      
+      if (index < results.length - 1) {
+        detailsSection.addWidget(CardService.newDivider());
+      }
     });
     
     card.addSection(detailsSection);
   }
   
-  // Action buttons
+  // Action buttons with iOS styling
   var actionsSection = CardService.newCardSection();
   
   var doneButton = CardService.newTextButton()
-    .setText('🎉 Done')
+    .setText('🎉 Great! Extract More Events')
     .setOnClickAction(CardService.newAction()
       .setFunctionName('buildGmailAddon'))
     .setTextButtonStyle(CardService.TextButtonStyle.FILLED);
@@ -570,19 +632,24 @@ function buildNoEventsCard(message) {
   var card = CardService.newCardBuilder()
     .setHeader(CardService.newCardHeader()
       .setTitle('EventAI')
-      .setSubtitle('No events found'));
+      .setSubtitle('No events detected')
+      .setImageUrl('https://eventai.leveluplife.app/api/static/eventai-icon.png')
+      .setImageStyle(CardService.ImageStyle.CIRCLE));
   
   var section = CardService.newCardSection()
     .addWidget(CardService.newTextParagraph()
-      .setText('📭 ' + message))
+      .setText('<font color="#FF9500">📭 ' + message + '</font>'))
+    .addWidget(CardService.newDivider())
     .addWidget(CardService.newTextParagraph()
-      .setText('💡 Try with emails that contain:\n• Meeting invitations\n• Event announcements\n• Appointment confirmations\n• Travel itineraries'));
+      .setText('<b>💡 EventAI works best with:</b>'))
+    .addWidget(CardService.newTextParagraph()
+      .setText('• Meeting invitations & calendar requests\n• Event announcements & schedules\n• Appointment confirmations\n• Travel bookings & itineraries\n• Deadline & reminder emails'));
   
   var backButton = CardService.newTextButton()
-    .setText('← Back')
+    .setText('← Try Another Email')
     .setOnClickAction(CardService.newAction()
       .setFunctionName('buildGmailAddon'))
-    .setTextButtonStyle(CardService.TextButtonStyle.TEXT);
+    .setTextButtonStyle(CardService.TextButtonStyle.FILLED);
   
   section.addWidget(CardService.newButtonSet()
     .addButton(backButton));
@@ -599,16 +666,19 @@ function buildErrorCard(errorMessage) {
   var card = CardService.newCardBuilder()
     .setHeader(CardService.newCardHeader()
       .setTitle('EventAI')
-      .setSubtitle('Error'));
+      .setSubtitle('Something went wrong')
+      .setImageUrl('https://eventai.leveluplife.app/api/static/eventai-icon.png')
+      .setImageStyle(CardService.ImageStyle.CIRCLE));
   
   var section = CardService.newCardSection()
     .addWidget(CardService.newTextParagraph()
-      .setText('❌ ' + errorMessage))
+      .setText('<font color="#FF3B30">❌ ' + errorMessage + '</font>'))
+    .addWidget(CardService.newDivider())
     .addWidget(CardService.newTextParagraph()
-      .setText('Please try again or contact support if the problem persists.'));
+      .setText('<font color="#666666">If this issue persists, please contact our support team at support@leveluplife.app</font>'));
   
   var retryButton = CardService.newTextButton()
-    .setText('🔄 Retry')
+    .setText('🔄 Try Again')
     .setOnClickAction(CardService.newAction()
       .setFunctionName('buildGmailAddon'))
     .setTextButtonStyle(CardService.TextButtonStyle.FILLED);
@@ -628,27 +698,43 @@ function showSettings() {
   var card = CardService.newCardBuilder()
     .setHeader(CardService.newCardHeader()
       .setTitle('EventAI Settings')
-      .setSubtitle('Configure preferences'));
+      .setSubtitle('Configuration & Information')
+      .setImageUrl('https://eventai.leveluplife.app/api/static/eventai-icon.png')
+      .setImageStyle(CardService.ImageStyle.CIRCLE));
   
-  var section = CardService.newCardSection()
-    .setHeader('⚙️ Configuration')
+  // User info section
+  var userSection = CardService.newCardSection()
+    .setHeader('👤 Account Information')
+    .addWidget(CardService.newDecoratedText()
+      .setTopLabel('Gmail Account')
+      .setText(Session.getActiveUser().getEmail())
+      .setStartIcon(CardService.newIconImage().setIcon(CardService.Icon.PERSON)))
+    .addWidget(CardService.newDecoratedText()
+      .setTopLabel('Timezone')
+      .setText(Session.getScriptTimeZone())
+      .setStartIcon(CardService.newIconImage().setIcon(CardService.Icon.CLOCK)));
+  
+  // App info section
+  var appSection = CardService.newCardSection()
+    .setHeader('ℹ️ Application Information')
     .addWidget(CardService.newTextParagraph()
-      .setText('📧 User: ' + Session.getActiveUser().getEmail()))
+      .setText('<b>EventAI for Gmail</b>\nVersion 1.0.0'))
     .addWidget(CardService.newTextParagraph()
-      .setText('🕒 Timezone: ' + Session.getScriptTimeZone()))
+      .setText('<font color="#666666">Powered by advanced AI technology to transform your emails into actionable calendar events.</font>'))
     .addWidget(CardService.newTextParagraph()
-      .setText('🔗 API: ' + EVENTAI_API_BASE));
+      .setText('🔗 <b>API Endpoint:</b> ' + EVENTAI_API_BASE));
   
   var backButton = CardService.newTextButton()
-    .setText('← Back')
+    .setText('← Back to EventAI')
     .setOnClickAction(CardService.newAction()
       .setFunctionName('buildGmailAddon'))
     .setTextButtonStyle(CardService.TextButtonStyle.TEXT);
   
-  section.addWidget(CardService.newButtonSet()
+  appSection.addWidget(CardService.newButtonSet()
     .addButton(backButton));
   
-  card.addSection(section);
+  card.addSection(userSection);
+  card.addSection(appSection);
   
   return CardService.newActionResponseBuilder()
     .setNavigation(CardService.newNavigation()
