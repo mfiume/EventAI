@@ -387,6 +387,12 @@ CRITICAL INSTRUCTIONS:
 3. All events should be interpreted relative to when the email was sent
 4. Use the year {datetime.strptime(email_reference_date, '%Y-%m-%d').year} for events unless explicitly specified otherwise
 
+SPECIAL HANDLING FOR EMAIL EXTRACTION ISSUES:
+- If the email content appears to be incomplete (e.g., just "Email from sender with subject: Title"), look carefully at the subject line and any available headers for event information
+- Extract event details from subject lines when they contain date/time/location information
+- Be more aggressive in interpreting partial information when the email body seems corrupted or incomplete
+- Concert tickets, event announcements, and booking confirmations often have key details in the subject line
+
 Email Content:
 {text}
 

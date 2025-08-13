@@ -117,10 +117,32 @@ function extractEventsFromCurrentEmail(e) {
       return buildErrorCard('Failed to read email: ' + emailData.error);
     }
     
-    // If email body is empty or failed to decode, use subject and basic info
+    // If email body is empty or failed to decode, try alternative extraction methods
     if (!emailData.body || emailData.body.length < 10 || emailData.body.indexOf('Could not') !== -1) {
-      console.log('Email body extraction failed, using subject and sender info');
-      emailData.body = 'Email from ' + emailData.sender + ' with subject: ' + emailData.subject;
+      console.log('Email body extraction failed, trying alternative methods');
+      console.log('Original body length:', emailData.body ? emailData.body.length : 0);
+      
+      // Try to get more content from headers and subject
+      var alternativeContent = '';
+      if (emailData.subject) {
+        alternativeContent += 'Subject: ' + emailData.subject + '\n';
+      }
+      if (emailData.sender) {
+        alternativeContent += 'From: ' + emailData.sender + '\n';
+      }
+      if (emailData.date) {
+        alternativeContent += 'Date: ' + emailData.date + '\n';
+      }
+      
+      // If we have some body content, even if short, include it
+      if (emailData.body && emailData.body.length > 0 && emailData.body.indexOf('Could not') === -1) {
+        alternativeContent += '\nContent: ' + emailData.body;
+      } else {
+        alternativeContent += '\nNote: Email body could not be decoded - this may be a complex HTML email with rich formatting.';
+      }
+      
+      emailData.body = alternativeContent;
+      console.log('Using alternative content:', alternativeContent.substring(0, 200) + '...');
     }
     
     // Process email content directly (synchronous)
@@ -269,24 +291,65 @@ function extractBodyFromPayload(payload) {
   }
   
   if (payload.parts) {
-    // Multi-part message
+    // Multi-part message - try all parts to get maximum content
+    var plainTextBody = '';
+    var htmlBody = '';
+    
     for (var i = 0; i < payload.parts.length; i++) {
       var part = payload.parts[i];
-      if (part.mimeType === 'text/plain' && part.body.data) {
+      console.log('Processing part ' + i + ': ' + part.mimeType);
+      
+      if (part.mimeType === 'text/plain' && part.body && part.body.data) {
         try {
-          body += Utilities.newBlob(Utilities.base64DecodeWebSafe(part.body.data)).getDataAsString();
+          plainTextBody += Utilities.newBlob(Utilities.base64DecodeWebSafe(part.body.data)).getDataAsString();
+          console.log('Successfully decoded plain text part, length:', plainTextBody.length);
         } catch (e) {
           console.error('Error decoding plain text:', e);
         }
-      } else if (part.mimeType === 'text/html' && part.body.data && !body) {
-        // Fallback to HTML if no plain text
+      } else if (part.mimeType === 'text/html' && part.body && part.body.data) {
         try {
           var htmlContent = Utilities.newBlob(Utilities.base64DecodeWebSafe(part.body.data)).getDataAsString();
-          body += htmlContent.replace(/<[^>]*>/g, ''); // Simple HTML tag removal
+          // Better HTML parsing - preserve line breaks and clean up formatting
+          var cleanHtml = htmlContent
+            .replace(/<br\s*\/?>/gi, '\n')           // Convert <br> to newlines
+            .replace(/<\/p>/gi, '\n\n')              // Convert </p> to double newlines  
+            .replace(/<\/div>/gi, '\n')              // Convert </div> to newlines
+            .replace(/<\/h[1-6]>/gi, '\n')           // Convert headers to newlines
+            .replace(/<[^>]*>/g, '')                 // Remove all HTML tags
+            .replace(/&nbsp;/gi, ' ')                // Convert &nbsp; to spaces
+            .replace(/&amp;/gi, '&')                 // Convert &amp; to &
+            .replace(/&lt;/gi, '<')                  // Convert &lt; to <
+            .replace(/&gt;/gi, '>')                  // Convert &gt; to >
+            .replace(/\n\s*\n\s*\n/g, '\n\n')       // Collapse multiple newlines
+            .trim();
+          htmlBody += cleanHtml;
+          console.log('Successfully decoded HTML part, length:', htmlBody.length);
         } catch (e) {
           console.error('Error decoding HTML:', e);
         }
+      } else if (part.parts) {
+        // Recursive processing for nested parts
+        var nestedBody = extractBodyFromPayload(part);
+        if (nestedBody && nestedBody.length > 0) {
+          body += nestedBody + '\n';
+          console.log('Successfully extracted nested content, length:', nestedBody.length);
+        }
       }
+    }
+    
+    // Prefer plain text, but use HTML if plain text is empty or too short
+    if (plainTextBody && plainTextBody.length > 20) {
+      body = plainTextBody;
+      console.log('Using plain text body, length:', body.length);
+    } else if (htmlBody && htmlBody.length > 20) {
+      body = htmlBody;
+      console.log('Using HTML body (converted to text), length:', body.length);
+    } else if (plainTextBody) {
+      body = plainTextBody;
+      console.log('Using short plain text body, length:', body.length);
+    } else if (htmlBody) {
+      body = htmlBody;
+      console.log('Using short HTML body, length:', body.length);
     }
   } else if (payload.body && payload.body.data) {
     console.log('Processing single part message:');
@@ -814,8 +877,21 @@ function callEventAIAPI(endpoint, payload) {
  */
 function formatEventTime(startDate, endDate) {
   try {
-    var start = new Date(startDate);
-    var end = endDate ? new Date(endDate) : null;
+    console.log('Formatting event time:');
+    console.log('- startDate input:', startDate);
+    console.log('- endDate input:', endDate);
+    
+    // Handle ISO date strings more robustly
+    var start = parseEventDate(startDate);
+    var end = endDate ? parseEventDate(endDate) : null;
+    
+    console.log('- parsed start:', start);
+    console.log('- parsed end:', end);
+    
+    if (!start || isNaN(start.getTime())) {
+      console.error('Invalid start date after parsing:', startDate);
+      return startDate || 'Invalid date';
+    }
     
     var options = {
       weekday: 'short',
@@ -823,16 +899,19 @@ function formatEventTime(startDate, endDate) {
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: Session.getScriptTimeZone()  // Use user's timezone
     };
     
     var timeString = start.toLocaleDateString('en-US', options);
+    console.log('- formatted timeString:', timeString);
     
-    if (end && end.getTime() !== start.getTime()) {
+    if (end && !isNaN(end.getTime()) && end.getTime() !== start.getTime()) {
       var endOptions = {
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
+        timeZone: Session.getScriptTimeZone()
       };
       
       // Same day - just show end time
@@ -844,11 +923,77 @@ function formatEventTime(startDate, endDate) {
       }
     }
     
+    console.log('- final formatted string:', timeString);
     return timeString;
     
   } catch (error) {
     console.error('Error formatting event time:', error);
+    console.error('- startDate was:', startDate);
+    console.error('- endDate was:', endDate);
     return startDate || 'Invalid date';
+  }
+}
+
+/**
+ * Parse event date string more robustly
+ */
+function parseEventDate(dateString) {
+  if (!dateString) return null;
+  
+  try {
+    // If it's already a Date object, return it
+    if (dateString instanceof Date) {
+      return dateString;
+    }
+    
+    // If it's a string, try different parsing approaches
+    if (typeof dateString === 'string') {
+      // First try direct parsing (works for most ISO strings)
+      var date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+      
+      // If that fails, try manual parsing for ISO format
+      // Format: "2025-08-21T19:30:00-04:00"
+      var isoMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})([-+]\d{2}:\d{2})?$/);
+      if (isoMatch) {
+        var year = parseInt(isoMatch[1]);
+        var month = parseInt(isoMatch[2]) - 1; // JavaScript months are 0-based
+        var day = parseInt(isoMatch[3]);
+        var hour = parseInt(isoMatch[4]);
+        var minute = parseInt(isoMatch[5]);
+        var second = parseInt(isoMatch[6]);
+        
+        // Create date in UTC then adjust for timezone if needed
+        var utcDate = new Date(Date.UTC(year, month, day, hour, minute, second));
+        
+        // Handle timezone offset if present
+        if (isoMatch[7]) {
+          var tzOffset = isoMatch[7];
+          var offsetHours = parseInt(tzOffset.substring(1, 3));
+          var offsetMinutes = parseInt(tzOffset.substring(4, 6));
+          var totalOffsetMinutes = offsetHours * 60 + offsetMinutes;
+          
+          if (tzOffset.startsWith('-')) {
+            // For -04:00, we need to ADD 4 hours to get UTC
+            utcDate.setUTCMinutes(utcDate.getUTCMinutes() + totalOffsetMinutes);
+          } else {
+            // For +04:00, we need to SUBTRACT 4 hours to get UTC
+            utcDate.setUTCMinutes(utcDate.getUTCMinutes() - totalOffsetMinutes);
+          }
+        }
+        
+        return utcDate;
+      }
+    }
+    
+    // Fallback - try Date constructor
+    return new Date(dateString);
+    
+  } catch (e) {
+    console.error('Error parsing date:', dateString, e);
+    return null;
   }
 }
 
