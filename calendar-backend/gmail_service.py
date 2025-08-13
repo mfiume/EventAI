@@ -27,7 +27,7 @@ class GmailService:
     def __init__(self):
         self.client_id = os.getenv("GOOGLE_CLIENT_ID")
         self.client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-        self.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://eventai-api-661796696046.us-central1.run.app/api/gmail/oauth/callback")
+        self.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://eventai.leveluplife.app/api/gmail/oauth/callback")
         
         if not self.client_id or not self.client_secret:
             logger.warning("Google OAuth credentials not configured")

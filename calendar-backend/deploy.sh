@@ -29,6 +29,14 @@ echo "iOS Production Key: eak_${IOS_PROD_KEY:0:8}...${IOS_PROD_KEY: -8}"
 echo "Web Production Key: eak_${WEB_PROD_KEY:0:8}...${WEB_PROD_KEY: -8}"
 echo "Dev Production Key: eak_${DEV_PROD_KEY:0:8}...${DEV_PROD_KEY: -8}"
 
+# Load environment variables from secrets file
+if [ -f "secrets/secrets.env" ]; then
+    echo "📁 Loading secrets from secrets.env..."
+    export $(grep -v '^#' secrets/secrets.env | xargs)
+else
+    echo "⚠️  Warning: secrets/secrets.env not found"
+fi
+
 # Set the project
 gcloud config set project $PROJECT_ID
 
@@ -45,6 +53,9 @@ gcloud run deploy $SERVICE_NAME \
   --set-env-vars WEB_CLIENT_API_KEY="eak_${WEB_PROD_KEY}" \
   --set-env-vars DEV_CLIENT_API_KEY="eak_${DEV_PROD_KEY}" \
   --set-env-vars GOOGLE_CLOUD_PROJECT="$PROJECT_ID" \
+  --set-env-vars GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID}" \
+  --set-env-vars GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
+  --set-env-vars GOOGLE_REDIRECT_URI="https://eventai.leveluplife.app/api/gmail/oauth/callback" \
   --memory 1Gi \
   --cpu 1 \
   --max-instances 10 \

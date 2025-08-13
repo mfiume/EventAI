@@ -7,6 +7,7 @@ FastAPI routes for Gmail Add-on integration
 import os
 import json
 import hashlib
+import requests
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException, Request, Depends, Form, Query, status
@@ -15,6 +16,7 @@ from pydantic import BaseModel, EmailStr
 import logging
 
 from gmail_service import GmailService
+from auth_service import require_api_key, APIKeyInfo
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -64,7 +66,11 @@ class CalendarListResponse(BaseModel):
 user_tokens = {}
 
 @gmail_router.get("/oauth/authorize", response_model=GoogleAuthResponse)
-async def initiate_google_oauth(request: Request, user_email: Optional[str] = Query(None)):
+async def initiate_google_oauth(
+    request: Request, 
+    user_email: Optional[str] = Query(None),
+    api_key_info: APIKeyInfo = Depends(require_api_key)
+):
     """Initiate Google OAuth flow for Gmail integration"""
     try:
         # Generate state parameter for security
@@ -146,7 +152,10 @@ async def handle_google_oauth_callback(
         )
 
 @gmail_router.post("/extract", response_model=EventExtractionResponse)
-async def extract_events_from_email(request: EmailExtractionRequest):
+async def extract_events_from_email(
+    request: EmailExtractionRequest,
+    api_key_info: APIKeyInfo = Depends(require_api_key)
+):
     """Extract calendar events from email content using EventAI"""
     try:
         logger.info(f"Processing email extraction for user: {request.user_email}")
@@ -187,7 +196,11 @@ From: {request.sender}
         )
 
 @gmail_router.get("/calendars", response_model=CalendarListResponse)
-async def list_user_calendars(user_email: str = Query(...), access_token: str = Query(...)):
+async def list_user_calendars(
+    user_email: str = Query(...), 
+    access_token: str = Query(...),
+    api_key_info: APIKeyInfo = Depends(require_api_key)
+):
     """List user's Google Calendars"""
     try:
         # Create credentials from token
@@ -211,7 +224,10 @@ async def list_user_calendars(user_email: str = Query(...), access_token: str = 
         )
 
 @gmail_router.post("/events/create")
-async def create_calendar_events(request: CalendarSelectionRequest):
+async def create_calendar_events(
+    request: CalendarSelectionRequest,
+    api_key_info: APIKeyInfo = Depends(require_api_key)
+):
     """Create events in user's Google Calendar"""
     try:
         # Create credentials from token
@@ -273,7 +289,8 @@ async def create_calendar_events(request: CalendarSelectionRequest):
 async def get_email_content(
     message_id: str,
     user_email: str = Query(...),
-    access_token: str = Query(...)
+    access_token: str = Query(...),
+    api_key_info: APIKeyInfo = Depends(require_api_key)
 ):
     """Get email content from Gmail (for debugging/testing)"""
     try:

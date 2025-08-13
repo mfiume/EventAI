@@ -17,11 +17,12 @@
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
   "addOns": {
-    "gmail": {
+    "common": {
       "name": "EventAI",
-      "logoUrl": "https://eventai-api-661796696046.us-central1.run.app/static/logo.png",
-      "primaryColor": "#4285F4",
-      "secondaryColor": "#34A853",
+      "logoUrl": "https://www.gstatic.com/images/icons/material/system/1x/event_note_black_24dp.png",
+      "useLocaleFromApp": true
+    },
+    "gmail": {
       "contextualTriggers": [
         {
           "unconditional": {},
@@ -42,6 +43,9 @@
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/script.external_request"
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.locale",
+    "https://www.googleapis.com/auth/gmail.addons.execute",
+    "https://www.googleapis.com/auth/gmail.addons.current.action.compose"
   ]
 }
