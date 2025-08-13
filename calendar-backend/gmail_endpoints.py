@@ -382,10 +382,11 @@ CONTEXT FOR DATE INTERPRETATION:
 - Email reference date for "tomorrow", "next week", etc: {email_reference_day} ({email_reference_date})
 
 CRITICAL INSTRUCTIONS:
-1. If this is an old email (email date is before today), calculate relative dates FROM THE EMAIL DATE, not from today
-2. "Tomorrow" in the email means the day after {email_reference_date} (which would be {(datetime.strptime(email_reference_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')})
-3. All events should be interpreted relative to when the email was sent
-4. Use the year {datetime.strptime(email_reference_date, '%Y-%m-%d').year} for events unless explicitly specified otherwise
+1. PRIORITIZE ABSOLUTE DATES: If the email content contains specific dates (like "Aug 21", "August 21", "Thu Aug 21"), use those EXACT dates, not calculations based on email send date
+2. For RELATIVE dates only (like "tomorrow", "next Friday"), calculate from the email send date {email_reference_date}
+3. If content shows both day name and date (like "Thu • Aug 21"), the DATE takes precedence - verify the day matches the date
+4. Use the current year {datetime.strptime(current_date, '%Y-%m-%d').year} unless a different year is explicitly specified
+5. Email send date ({email_reference_date}) is only for interpreting relative terms, NOT for overriding absolute dates in the content
 
 SPECIAL HANDLING FOR EMAIL EXTRACTION ISSUES:
 - If the email content appears to be incomplete (e.g., just "Email from sender with subject: Title"), look carefully at the subject line and any available headers for event information
