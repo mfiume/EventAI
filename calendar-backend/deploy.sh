@@ -18,10 +18,21 @@ PROJECT_ID="levelup-467902"
 SERVICE_NAME="eventai-api"
 REGION="us-central1"
 
+# Generate production API keys
+echo "🔑 Generating production API keys..."
+IOS_PROD_KEY=$(openssl rand -hex 32)
+WEB_PROD_KEY=$(openssl rand -hex 32)
+DEV_PROD_KEY=$(openssl rand -hex 32)
+
+echo "Generated production API keys:"
+echo "iOS Production Key: eak_${IOS_PROD_KEY:0:8}...${IOS_PROD_KEY: -8}"
+echo "Web Production Key: eak_${WEB_PROD_KEY:0:8}...${WEB_PROD_KEY: -8}"
+echo "Dev Production Key: eak_${DEV_PROD_KEY:0:8}...${DEV_PROD_KEY: -8}"
+
 # Set the project
 gcloud config set project $PROJECT_ID
 
-# Deploy to Cloud Run
+# Deploy to Cloud Run with API key authentication
 gcloud run deploy $SERVICE_NAME \
   --source . \
   --platform managed \
@@ -30,17 +41,45 @@ gcloud run deploy $SERVICE_NAME \
   --port 8080 \
   --set-env-vars ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
   --set-env-vars CLAUDE_MODEL=claude-3-5-haiku-20241022 \
+  --set-env-vars IOS_CLIENT_API_KEY="eak_${IOS_PROD_KEY}" \
+  --set-env-vars WEB_CLIENT_API_KEY="eak_${WEB_PROD_KEY}" \
+  --set-env-vars DEV_CLIENT_API_KEY="eak_${DEV_PROD_KEY}" \
+  --set-env-vars GOOGLE_CLOUD_PROJECT="$PROJECT_ID" \
   --memory 1Gi \
   --cpu 1 \
   --max-instances 10 \
   --timeout 300
 
 echo "✅ Deployment complete!"
-echo "🌐 Service URL: https://$SERVICE_NAME-*.run.app"
+
+# Get the actual service URL
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format='value(status.url)')
+echo "🌐 Service URL: $SERVICE_URL"
 
 # Test the deployment
 echo "🔍 Testing deployment..."
-SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format='value(status.url)')
 curl -X GET "$SERVICE_URL/health"
 echo ""
 echo "✅ Health check complete!"
+
+# Output production API keys
+echo ""
+echo "🎯 Production Environment Ready!"
+echo "==============================================="
+echo "Production API URL: $SERVICE_URL/api"
+echo "iOS Production Key: eak_${IOS_PROD_KEY}"
+echo "Web Production Key: eak_${WEB_PROD_KEY}"
+echo "Dev Production Key: eak_${DEV_PROD_KEY}"
+echo "==============================================="
+echo ""
+echo "🔧 Next Steps:"
+echo "1. Update iOS app Config.xcconfig with production key"
+echo "2. Update web app with production key"
+echo "3. Test API endpoints require authentication"
+echo "⚠️  Keep production keys secure!"
+
+# Save production keys to file
+echo "eak_${IOS_PROD_KEY}" > production-ios-key.txt
+echo "eak_${WEB_PROD_KEY}" > production-web-key.txt  
+echo "eak_${DEV_PROD_KEY}" > production-dev-key.txt
+echo "📝 Production keys saved to: production-*-key.txt files"

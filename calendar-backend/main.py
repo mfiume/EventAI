@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Header, Request
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Header, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
@@ -29,6 +29,9 @@ except ImportError as e:
 
 # Import our BigQuery service
 from bigquery_service import get_bigquery_service
+
+# Import authentication service
+from auth_service import require_api_key, optional_api_key, APIKeyInfo
 
 # Load environment variables from secrets directory (if exists locally)
 if os.path.exists("secrets/secrets.env"):
@@ -602,7 +605,7 @@ async def api_debug_info():
     }
 
 @api_router.get("/usage", response_model=UsageResponse)
-async def get_usage_stats(request: Request):
+async def get_usage_stats(request: Request, api_key_info: APIKeyInfo = Depends(require_api_key)):
     """Get current user usage statistics"""
     user_id = usage_service.get_user_id(request)
     # Ensure user exists in BigQuery
@@ -671,7 +674,8 @@ async def convert_to_calendar(
     text: str = Form(""),
     timezone: str = Form("UTC"),
     userLocation: Optional[str] = Form(None),
-    image: Optional[UploadFile] = File(None)
+    image: Optional[UploadFile] = File(None),
+    api_key_info: APIKeyInfo = Depends(require_api_key)
 ):
     """Convert natural language text and/or image to calendar events"""
     user_id = usage_service.get_user_id(request)

@@ -136,9 +136,9 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
     }
     
     // Price string property - matches original interface
-    var monthlyPriceString: String {
+    var monthlyPriceString: String? {
         guard let monthlyPackage = currentOffering?.monthly else {
-            fatalError("Monthly subscription package not available. Ensure offerings are loaded before accessing price.")
+            return nil
         }
         return monthlyPackage.storeProduct.localizedPriceString
     }

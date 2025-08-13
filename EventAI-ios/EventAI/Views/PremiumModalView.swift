@@ -222,25 +222,39 @@ struct PremiumModalView: View {
     }
 
     private func purchasePremium() async {
+        print("🎯 PremiumModal: Starting purchase process...")
         isLoading = true
         errorMessage = nil
 
         // Use the subscription service for the purchase
         await subscriptionService.purchaseSubscription()
         
+        print("🎯 PremiumModal: Purchase completed - isPremium: \(subscriptionService.isPremium), error: \(subscriptionService.purchaseError ?? "none")")
+        
         // Check results from subscription service
         if let error = subscriptionService.purchaseError {
             errorMessage = error
+            print("🎯 PremiumModal: Showing error: \(error)")
         } else if subscriptionService.isPremium {
             // Purchase successful and confirmed
+            print("🎯 PremiumModal: Purchase successful, dismissing modal")
             dismiss()
         } else {
-            // Handle edge cases
-            errorMessage = "Purchase completed! If premium features don't appear immediately, please restart the app."
+            // Handle edge cases - user may have cancelled or other scenarios
+            print("🎯 PremiumModal: Purchase completed but status unclear")
             
-            // Auto-dismiss after showing message
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                dismiss()
+            // Check if it was just a cancellation (no error set)
+            if subscriptionService.purchaseError == nil {
+                // User likely cancelled, don't show error
+                print("🎯 PremiumModal: User likely cancelled, no error message")
+            } else {
+                // Show helpful message for edge cases
+                errorMessage = "Purchase completed! If premium features don't appear immediately, please restart the app or use 'Restore Purchases'."
+                
+                // Auto-dismiss after showing message
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    dismiss()
+                }
             }
         }
 
@@ -248,25 +262,31 @@ struct PremiumModalView: View {
     }
 
     private func restorePurchases() async {
+        print("🎯 PremiumModal: Starting restore purchases...")
         isLoading = true
         errorMessage = nil
 
         // Use the subscription service to restore purchases
         await subscriptionService.restorePurchases()
         
+        print("🎯 PremiumModal: Restore completed - isPremium: \(subscriptionService.isPremium), error: \(subscriptionService.purchaseError ?? "none")")
+        
         // Check results from subscription service
-        if let error = subscriptionService.purchaseError {
-            errorMessage = error
-        } else if subscriptionService.isPremium {
+        if subscriptionService.isPremium {
             // Restore successful
             errorMessage = "Purchases restored successfully!"
+            print("🎯 PremiumModal: Restore successful, dismissing modal")
             
             // Auto-dismiss after showing success message
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 dismiss()
             }
+        } else if let error = subscriptionService.purchaseError {
+            errorMessage = error
+            print("🎯 PremiumModal: Restore failed with error: \(error)")
         } else {
             errorMessage = "No previous purchases found to restore."
+            print("🎯 PremiumModal: No purchases found to restore")
         }
 
         isLoading = false

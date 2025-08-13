@@ -26,6 +26,10 @@ struct RevenueCatConfig {
     /// The default offering identifier - typically "default" unless you have multiple offerings
     static let defaultOfferingID = "default"
     
+    // MARK: - Vendor Configuration
+    /// Apple Developer Vendor Number - used for App Store Connect identification
+    static let vendorNumber = "93609904"
+    
     // MARK: - Configuration Validation
     /// Validates that all required configuration is set up properly
     static func validateConfiguration() -> [String] {

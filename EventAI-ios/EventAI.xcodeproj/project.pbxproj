@@ -45,6 +45,7 @@
 		1A234567890A0023 /* SubscriptionTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionTestView.swift; sourceTree = "<group>"; };
 		1A234567890A0026 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		1A234567890AFFFD /* EventAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EventAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A234567890A0027 /* EventAI.storekit */ = {isa = PBXFileReference; lastKnownFileType = text.storekit; path = EventAI.storekit; sourceTree = "<group>"; };
 		4E1D393B2E4916FE00638509 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -107,6 +108,7 @@
 			isa = PBXGroup;
 			children = (
 				1A234567890AFFFF /* EventAI */,
+				1A234567890A0027 /* EventAI.storekit */,
 				4E1D393A2E4916FE00638509 /* Frameworks */,
 				1A234567890AFFFE /* Products */,
 			);

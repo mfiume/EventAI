@@ -2,7 +2,7 @@ import StoreKit
 import Foundation
 
 @MainActor
-class SubscriptionService: ObservableObject {
+class SubscriptionService_StoreKit: ObservableObject {
     @Published var isPremium = false
     @Published var subscriptionStatus: String = "Free"
     @Published var expiryDate: Date?
@@ -47,64 +47,124 @@ class SubscriptionService: ObservableObject {
     // MARK: - Purchase Flow
     func purchaseSubscription() async {
         print("🛒 Starting subscription purchase flow...")
+        print("📊 Current state - Products loaded: \(products.count), isPremium: \(isPremium)")
+        
+        // Wait a moment for products to load if they haven't yet
+        if products.isEmpty {
+            print("⏳ Products not loaded yet, waiting...")
+            await loadProducts()
+            
+            // Give a short delay for products to be available
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        }
         
         guard let product = products.first(where: { $0.id == monthlySubscriptionID }) else {
             print("❌ Product not found. Available products: \(products.map { $0.id })")
-            purchaseError = "Product not found. Please try again."
+            print("📦 All products details:")
+            for prod in products {
+                print("   - \(prod.id): \(prod.displayName) (\(prod.displayPrice))")
+            }
+            
+            purchaseError = "Subscription product not available. Please check your App Store connection and try again."
             return
         }
         
         print("📦 Using product: \(product.displayName) - \(product.displayPrice)")
+        print("🔍 Product details: ID=\(product.id), Type=\(product.type)")
         
         isLoading = true
         purchaseError = nil
         
         do {
             print("💳 Initiating purchase...")
+            
+            // Check if user can make purchases
+            guard AppStore.canMakePayments else {
+                print("❌ User cannot make payments")
+                purchaseError = "In-app purchases are not available. Please check your device settings."
+                isLoading = false
+                return
+            }
+            
             let result = try await product.purchase()
+            print("🔄 Purchase result received: \(result)")
             
             switch result {
             case .success(let verificationResult):
                 print("✅ Purchase successful, verifying...")
                 let transaction = try checkVerified(verificationResult)
                 print("✅ Transaction verified: \(transaction.id)")
+                print("📅 Transaction details - Product: \(transaction.productID), Date: \(transaction.purchaseDate)")
+                
                 await updateSubscriptionStatus()
                 await transaction.finish()
                 print("✅ Transaction finished")
                 
             case .userCancelled:
                 print("👤 User cancelled purchase")
+                // Don't set error for user cancellation
                 
             case .pending:
                 print("⏳ Purchase pending approval")
-                purchaseError = "Purchase is pending approval"
+                purchaseError = "Purchase is pending approval. Please check your payment method."
                 
             @unknown default:
-                print("❓ Unknown purchase result")
-                purchaseError = "Unknown purchase result"
+                print("❓ Unknown purchase result: \(result)")
+                purchaseError = "Unknown purchase result. Please try again or contact support."
             }
             
         } catch {
             print("❌ Purchase failed: \(error)")
-            purchaseError = error.localizedDescription
+            print("🔍 Error details: \(error.localizedDescription)")
+            purchaseError = "Purchase failed: \(error.localizedDescription)"
         }
         
         isLoading = false
+        print("🏁 Purchase flow completed - isPremium: \(isPremium), hasError: \(purchaseError != nil)")
     }
     
     // MARK: - Restore Purchases
     func restorePurchases() async {
+        print("🔄 Starting restore purchases...")
         isLoading = true
+        purchaseError = nil
         
         do {
+            print("🔄 Syncing with App Store...")
             try await AppStore.sync()
+            print("✅ App Store sync completed")
+            
             await updateSubscriptionStatus()
+            print("📊 Subscription status updated after restore - isPremium: \(isPremium)")
+            
+            if !isPremium {
+                // Check if we have any transactions at all
+                var hasAnyTransactions = false
+                for await result in Transaction.all {
+                    hasAnyTransactions = true
+                    do {
+                        let transaction = try checkVerified(result)
+                        print("🔍 Found transaction: \(transaction.productID) - \(transaction.purchaseDate)")
+                    } catch {
+                        print("❌ Failed to verify transaction during restore: \(error)")
+                    }
+                }
+                
+                if !hasAnyTransactions {
+                    purchaseError = "No previous purchases found to restore."
+                } else {
+                    purchaseError = "No active subscriptions found. Previous purchases may have expired."
+                }
+            }
+            
         } catch {
             print("❌ Failed to restore purchases: \(error)")
-            purchaseError = error.localizedDescription
+            print("🔍 Restore error details: \(error.localizedDescription)")
+            purchaseError = "Failed to restore purchases: \(error.localizedDescription)"
         }
         
         isLoading = false
+        print("🏁 Restore purchases completed - isPremium: \(isPremium)")
     }
     
     // MARK: - Subscription Status

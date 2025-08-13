@@ -3,10 +3,15 @@ runtime: nodejs20
 
 # Serve static files
 handlers:
-# Serve root as index.html
-- url: /
-  static_files: index.html
-  upload: index.html
+# Serve terms pages first (before catch-all)
+- url: /terms.html
+  static_files: terms.html
+  upload: terms\.html
+  secure: always
+
+- url: /terms-of-use.html
+  static_files: terms-of-use.html
+  upload: terms-of-use\.html
   secure: always
 
 # Serve static assets
@@ -29,6 +34,12 @@ handlers:
 - url: /favicon.ico
   static_files: images/favicon.ico
   upload: images/favicon.ico
+  secure: always
+
+# Serve root as index.html
+- url: /
+  static_files: index.html
+  upload: index.html
   secure: always
 
 # Catch-all for single page app (serve index.html for all other routes)

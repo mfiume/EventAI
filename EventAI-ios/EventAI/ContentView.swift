@@ -2,6 +2,9 @@ import SwiftUI
 import EventKit
 import CoreLocation
 
+// Use RevenueCat instead of StoreKit for subscriptions
+typealias SubscriptionService = SubscriptionService_RevenueCat
+
 struct ContentView: View {
     @State private var inputText = ""
     @State private var isLoading = false
@@ -430,7 +433,7 @@ struct ContentView: View {
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                 
                 if inputText.isEmpty && selectedImage == nil && !isTextFieldFocused {
-                    Text("Use AI to create calendar events from text, email, and images")
+                    Text("Use AI to create calendar events from text, email, and images.")
                         .foregroundColor(.gray.opacity(0.6))
                         .font(.body)
                         .padding(.horizontal, 16)
