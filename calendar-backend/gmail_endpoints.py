@@ -338,9 +338,22 @@ async def convert_email_to_events(text: str, timezone: str, user_location: Optio
         if not anthropic_api_key:
             raise ValueError("Anthropic API key not configured")
         
+        # Get current date for context
+        from datetime import datetime
+        import pytz
+        
+        # Get current date in the user's timezone
+        user_tz = pytz.timezone(timezone)
+        current_date = datetime.now(user_tz).strftime("%Y-%m-%d")
+        current_day = datetime.now(user_tz).strftime("%A, %B %d, %Y")
+        
         # Prepare the prompt for Claude
         prompt = f"""
 Please analyze the following email content and extract any calendar events, meetings, appointments, or time-based commitments.
+
+IMPORTANT CONTEXT:
+- Today's date is: {current_day} ({current_date})
+- Use this date as reference for relative terms like "tomorrow", "next week", "this Friday", etc.
 
 Email Content:
 {text}
