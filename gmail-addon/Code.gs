@@ -935,96 +935,95 @@ function formatEventTime(startDate, endDate) {
 
 /**
  * Parse event date string more robustly
+ * Specifically handles: "2025-08-21T19:30:00-04:00"
  */
 function parseEventDate(dateString) {
-  if (!dateString) return null;
+  if (!dateString) {
+    console.log('parseEventDate: No date string provided');
+    return null;
+  }
   
   try {
-    console.log('Parsing date string:', dateString);
+    console.log('=== PARSING DATE ===');
+    console.log('Input:', dateString, typeof dateString);
     
     // If it's already a Date object, return it
     if (dateString instanceof Date) {
-      console.log('Already a Date object:', dateString);
+      console.log('Already a Date object, returning as-is');
       return dateString;
     }
     
-    // If it's a string, try different parsing approaches
-    if (typeof dateString === 'string') {
-      // First try direct parsing (works for most ISO strings in modern browsers)
-      var date = new Date(dateString);
-      console.log('Direct Date() parsing result:', date);
-      console.log('Is valid date?', !isNaN(date.getTime()));
+    // Convert to string if needed
+    var dateStr = String(dateString).trim();
+    console.log('String to parse:', dateStr);
+    
+    // Try the simplest approach first - strip timezone and parse
+    // "2025-08-21T19:30:00-04:00" -> "2025-08-21T19:30:00"
+    var cleanedDate = dateStr.replace(/[-+]\d{2}:\d{2}$/, '');
+    console.log('Cleaned date (no timezone):', cleanedDate);
+    
+    var simpleDate = new Date(cleanedDate);
+    console.log('Simple Date() result:', simpleDate);
+    console.log('Is valid?', !isNaN(simpleDate.getTime()));
+    console.log('Year check:', simpleDate.getFullYear(), '>', 2020, '=', simpleDate.getFullYear() > 2020);
+    
+    if (!isNaN(simpleDate.getTime()) && simpleDate.getFullYear() > 2020) {
+      console.log('✅ Using simple Date() parsing');
+      console.log('Final date components:', {
+        year: simpleDate.getFullYear(),
+        month: simpleDate.getMonth() + 1,
+        day: simpleDate.getDate(),
+        hour: simpleDate.getHours(),
+        minute: simpleDate.getMinutes(),
+        dayOfWeek: simpleDate.toLocaleDateString('en-US', {weekday: 'long'})
+      });
+      return simpleDate;
+    }
+    
+    // If simple parsing fails, try manual parsing
+    console.log('Simple parsing failed, trying manual parsing...');
+    
+    // Extract date components manually: 2025-08-21T19:30:00
+    var match = cleanedDate.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2}))?/);
+    if (match) {
+      var year = parseInt(match[1], 10);
+      var month = parseInt(match[2], 10) - 1; // JavaScript months are 0-based  
+      var day = parseInt(match[3], 10);
+      var hour = parseInt(match[4] || '0', 10);
+      var minute = parseInt(match[5] || '0', 10);
+      var second = parseInt(match[6] || '0', 10);
       
-      if (!isNaN(date.getTime()) && date.getFullYear() > 1970) {
-        console.log('Using direct parsing result');
-        return date;
-      }
+      console.log('Manual parsing components:', {
+        year: year,
+        month: month + 1, // Display as human-readable
+        day: day,
+        hour: hour,
+        minute: minute,
+        second: second
+      });
       
-      // If direct parsing fails or gives weird results, try manual parsing
-      console.log('Direct parsing failed, trying manual parsing...');
+      var manualDate = new Date(year, month, day, hour, minute, second);
+      console.log('Manual Date() result:', manualDate);
       
-      // Format: "2025-08-21T19:30:00-04:00"
-      var isoMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})([-+]\d{2}:\d{2})?$/);
-      if (isoMatch) {
-        console.log('Manual parsing matched ISO format');
-        var year = parseInt(isoMatch[1]);
-        var month = parseInt(isoMatch[2]) - 1; // JavaScript months are 0-based
-        var day = parseInt(isoMatch[3]);
-        var hour = parseInt(isoMatch[4]);
-        var minute = parseInt(isoMatch[5]);
-        var second = parseInt(isoMatch[6]);
-        var tzOffset = isoMatch[7];
-        
-        console.log('Parsed components:', {
-          year: year,
-          month: month + 1, // Show human-readable month
-          day: day,
-          hour: hour,
-          minute: minute,
-          second: second,
-          tzOffset: tzOffset
+      if (!isNaN(manualDate.getTime())) {
+        console.log('✅ Using manual parsing');
+        console.log('Manual date components:', {
+          year: manualDate.getFullYear(),
+          month: manualDate.getMonth() + 1,
+          day: manualDate.getDate(),
+          hour: manualDate.getHours(),
+          minute: manualDate.getMinutes(),
+          dayOfWeek: manualDate.toLocaleDateString('en-US', {weekday: 'long'})
         });
-        
-        // For simplicity, create the date in the local timezone first
-        // then let JavaScript handle timezone display
-        var localDate = new Date(year, month, day, hour, minute, second);
-        
-        console.log('Created local date:', localDate);
-        console.log('Local date components:', {
-          year: localDate.getFullYear(),
-          month: localDate.getMonth() + 1,
-          day: localDate.getDate(),
-          hour: localDate.getHours(),
-          minute: localDate.getMinutes()
-        });
-        
-        return localDate;
-      }
-      
-      // Try simpler format matching
-      console.log('Trying simpler format matching...');
-      var simpleMatch = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
-      if (simpleMatch) {
-        var year = parseInt(simpleMatch[1]);
-        var month = parseInt(simpleMatch[2]) - 1;
-        var day = parseInt(simpleMatch[3]);
-        
-        var timeMatch = dateString.match(/T(\d{2}):(\d{2})/);
-        var hour = timeMatch ? parseInt(timeMatch[1]) : 0;
-        var minute = timeMatch ? parseInt(timeMatch[2]) : 0;
-        
-        var simpleDate = new Date(year, month, day, hour, minute);
-        console.log('Simple parsing result:', simpleDate);
-        return simpleDate;
+        return manualDate;
       }
     }
     
-    // Fallback - try Date constructor again
-    console.log('All parsing methods failed, using fallback');
-    return new Date(dateString);
+    console.log('❌ All parsing methods failed');
+    return null;
     
   } catch (e) {
-    console.error('Error parsing date:', dateString, e);
+    console.error('❌ Exception in parseEventDate:', e);
     return null;
   }
 }
