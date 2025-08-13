@@ -895,12 +895,12 @@ function formatEventTime(startDate, endDate) {
     
     var options = {
       weekday: 'short',
-      month: 'short',
+      month: 'short', 
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true,
-      timeZone: Session.getScriptTimeZone()  // Use user's timezone
+      hour12: true
+      // Note: Removed timeZone property as it may not be supported in Google Apps Script
     };
     
     var timeString = start.toLocaleDateString('en-US', options);
@@ -910,8 +910,7 @@ function formatEventTime(startDate, endDate) {
       var endOptions = {
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true,
-        timeZone: Session.getScriptTimeZone()
+        hour12: true
       };
       
       // Same day - just show end time
@@ -941,54 +940,87 @@ function parseEventDate(dateString) {
   if (!dateString) return null;
   
   try {
+    console.log('Parsing date string:', dateString);
+    
     // If it's already a Date object, return it
     if (dateString instanceof Date) {
+      console.log('Already a Date object:', dateString);
       return dateString;
     }
     
     // If it's a string, try different parsing approaches
     if (typeof dateString === 'string') {
-      // First try direct parsing (works for most ISO strings)
+      // First try direct parsing (works for most ISO strings in modern browsers)
       var date = new Date(dateString);
-      if (!isNaN(date.getTime())) {
+      console.log('Direct Date() parsing result:', date);
+      console.log('Is valid date?', !isNaN(date.getTime()));
+      
+      if (!isNaN(date.getTime()) && date.getFullYear() > 1970) {
+        console.log('Using direct parsing result');
         return date;
       }
       
-      // If that fails, try manual parsing for ISO format
+      // If direct parsing fails or gives weird results, try manual parsing
+      console.log('Direct parsing failed, trying manual parsing...');
+      
       // Format: "2025-08-21T19:30:00-04:00"
       var isoMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})([-+]\d{2}:\d{2})?$/);
       if (isoMatch) {
+        console.log('Manual parsing matched ISO format');
         var year = parseInt(isoMatch[1]);
         var month = parseInt(isoMatch[2]) - 1; // JavaScript months are 0-based
         var day = parseInt(isoMatch[3]);
         var hour = parseInt(isoMatch[4]);
         var minute = parseInt(isoMatch[5]);
         var second = parseInt(isoMatch[6]);
+        var tzOffset = isoMatch[7];
         
-        // Create date in UTC then adjust for timezone if needed
-        var utcDate = new Date(Date.UTC(year, month, day, hour, minute, second));
+        console.log('Parsed components:', {
+          year: year,
+          month: month + 1, // Show human-readable month
+          day: day,
+          hour: hour,
+          minute: minute,
+          second: second,
+          tzOffset: tzOffset
+        });
         
-        // Handle timezone offset if present
-        if (isoMatch[7]) {
-          var tzOffset = isoMatch[7];
-          var offsetHours = parseInt(tzOffset.substring(1, 3));
-          var offsetMinutes = parseInt(tzOffset.substring(4, 6));
-          var totalOffsetMinutes = offsetHours * 60 + offsetMinutes;
-          
-          if (tzOffset.startsWith('-')) {
-            // For -04:00, we need to ADD 4 hours to get UTC
-            utcDate.setUTCMinutes(utcDate.getUTCMinutes() + totalOffsetMinutes);
-          } else {
-            // For +04:00, we need to SUBTRACT 4 hours to get UTC
-            utcDate.setUTCMinutes(utcDate.getUTCMinutes() - totalOffsetMinutes);
-          }
-        }
+        // For simplicity, create the date in the local timezone first
+        // then let JavaScript handle timezone display
+        var localDate = new Date(year, month, day, hour, minute, second);
         
-        return utcDate;
+        console.log('Created local date:', localDate);
+        console.log('Local date components:', {
+          year: localDate.getFullYear(),
+          month: localDate.getMonth() + 1,
+          day: localDate.getDate(),
+          hour: localDate.getHours(),
+          minute: localDate.getMinutes()
+        });
+        
+        return localDate;
+      }
+      
+      // Try simpler format matching
+      console.log('Trying simpler format matching...');
+      var simpleMatch = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (simpleMatch) {
+        var year = parseInt(simpleMatch[1]);
+        var month = parseInt(simpleMatch[2]) - 1;
+        var day = parseInt(simpleMatch[3]);
+        
+        var timeMatch = dateString.match(/T(\d{2}):(\d{2})/);
+        var hour = timeMatch ? parseInt(timeMatch[1]) : 0;
+        var minute = timeMatch ? parseInt(timeMatch[2]) : 0;
+        
+        var simpleDate = new Date(year, month, day, hour, minute);
+        console.log('Simple parsing result:', simpleDate);
+        return simpleDate;
       }
     }
     
-    // Fallback - try Date constructor
+    // Fallback - try Date constructor again
+    console.log('All parsing methods failed, using fallback');
     return new Date(dateString);
     
   } catch (e) {
