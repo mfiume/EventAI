@@ -117,33 +117,17 @@ function extractEventsFromCurrentEmail(e) {
       return buildErrorCard('Failed to read email: ' + emailData.error);
     }
     
-    // If email body is empty or failed to decode, try alternative extraction methods
-    if (!emailData.body || emailData.body.length < 10 || emailData.body.indexOf('Could not') !== -1) {
-      console.log('Email body extraction failed, trying alternative methods');
-      console.log('Original body length:', emailData.body ? emailData.body.length : 0);
+    // CRITICAL: Email body extraction must work - no fallbacks allowed
+    if (!emailData.body || emailData.body.length < 10) {
+      console.error('CRITICAL FAILURE: Email body extraction completely failed');
+      console.error('Body length:', emailData.body ? emailData.body.length : 0);
+      console.error('Body content:', emailData.body);
       
-      // Try to get more content from headers and subject
-      var alternativeContent = '';
-      if (emailData.subject) {
-        alternativeContent += 'Subject: ' + emailData.subject + '\n';
-      }
-      if (emailData.sender) {
-        alternativeContent += 'From: ' + emailData.sender + '\n';
-      }
-      if (emailData.date) {
-        alternativeContent += 'Date: ' + emailData.date + '\n';
-      }
-      
-      // If we have some body content, even if short, include it
-      if (emailData.body && emailData.body.length > 0 && emailData.body.indexOf('Could not') === -1) {
-        alternativeContent += '\nContent: ' + emailData.body;
-      } else {
-        alternativeContent += '\nNote: Email body could not be decoded - this may be a complex HTML email with rich formatting.';
-      }
-      
-      emailData.body = alternativeContent;
-      console.log('Using alternative content:', alternativeContent.substring(0, 200) + '...');
+      // Fail hard - no fallbacks
+      return buildErrorCard('Email body extraction failed. The email content could not be decoded. This is a critical system failure that must be fixed.');
     }
+    
+    console.log('✅ Email body extracted successfully, length:', emailData.body.length);
     
     // Process email content directly (synchronous)
     return processEmailForEvents(emailData, messageId);
@@ -300,15 +284,76 @@ function extractBodyFromPayload(payload) {
       console.log('Processing part ' + i + ': ' + part.mimeType);
       
       if (part.mimeType === 'text/plain' && part.body && part.body.data) {
+        console.log('Attempting to decode plain text part...');
         try {
-          plainTextBody += Utilities.newBlob(Utilities.base64DecodeWebSafe(part.body.data)).getDataAsString();
+          // Try multiple decoding methods
+          var decodedText = '';
+          
+          // Method 1: base64DecodeWebSafe
+          try {
+            decodedText = Utilities.newBlob(Utilities.base64DecodeWebSafe(part.body.data)).getDataAsString();
+            console.log('✅ base64DecodeWebSafe worked for plain text');
+          } catch (e1) {
+            console.log('❌ base64DecodeWebSafe failed, trying base64Decode...');
+            
+            // Method 2: regular base64Decode
+            try {
+              decodedText = Utilities.newBlob(Utilities.base64Decode(part.body.data)).getDataAsString();
+              console.log('✅ base64Decode worked for plain text');
+            } catch (e2) {
+              console.log('❌ base64Decode failed, trying direct string conversion...');
+              
+              // Method 3: Direct conversion (sometimes the data isn't base64 encoded)
+              try {
+                decodedText = String(part.body.data);
+                console.log('✅ Direct string conversion worked for plain text');
+              } catch (e3) {
+                console.error('❌ ALL plain text decoding methods failed:', e1, e2, e3);
+                throw new Error('Could not decode plain text part with any method');
+              }
+            }
+          }
+          
+          plainTextBody += decodedText;
           console.log('Successfully decoded plain text part, length:', plainTextBody.length);
+          
         } catch (e) {
-          console.error('Error decoding plain text:', e);
+          console.error('CRITICAL ERROR: Plain text decoding completely failed:', e);
+          // Don't continue - we need this to work
+          throw new Error('Email body extraction failed - plain text could not be decoded');
         }
+        
       } else if (part.mimeType === 'text/html' && part.body && part.body.data) {
+        console.log('Attempting to decode HTML part...');
         try {
-          var htmlContent = Utilities.newBlob(Utilities.base64DecodeWebSafe(part.body.data)).getDataAsString();
+          // Try multiple decoding methods for HTML
+          var htmlContent = '';
+          
+          // Method 1: base64DecodeWebSafe
+          try {
+            htmlContent = Utilities.newBlob(Utilities.base64DecodeWebSafe(part.body.data)).getDataAsString();
+            console.log('✅ base64DecodeWebSafe worked for HTML');
+          } catch (e1) {
+            console.log('❌ base64DecodeWebSafe failed, trying base64Decode...');
+            
+            // Method 2: regular base64Decode
+            try {
+              htmlContent = Utilities.newBlob(Utilities.base64Decode(part.body.data)).getDataAsString();
+              console.log('✅ base64Decode worked for HTML');
+            } catch (e2) {
+              console.log('❌ base64Decode failed, trying direct string conversion...');
+              
+              // Method 3: Direct conversion
+              try {
+                htmlContent = String(part.body.data);
+                console.log('✅ Direct string conversion worked for HTML');
+              } catch (e3) {
+                console.error('❌ ALL HTML decoding methods failed:', e1, e2, e3);
+                throw new Error('Could not decode HTML part with any method');
+              }
+            }
+          }
+          
           // Better HTML parsing - preserve line breaks and clean up formatting
           var cleanHtml = htmlContent
             .replace(/<br\s*\/?>/gi, '\n')           // Convert <br> to newlines
@@ -322,10 +367,14 @@ function extractBodyFromPayload(payload) {
             .replace(/&gt;/gi, '>')                  // Convert &gt; to >
             .replace(/\n\s*\n\s*\n/g, '\n\n')       // Collapse multiple newlines
             .trim();
+            
           htmlBody += cleanHtml;
           console.log('Successfully decoded HTML part, length:', htmlBody.length);
+          
         } catch (e) {
-          console.error('Error decoding HTML:', e);
+          console.error('CRITICAL ERROR: HTML decoding completely failed:', e);
+          // Don't continue - we need this to work
+          throw new Error('Email body extraction failed - HTML could not be decoded');
         }
       } else if (part.parts) {
         // Recursive processing for nested parts
