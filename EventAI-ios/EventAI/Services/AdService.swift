@@ -42,23 +42,10 @@ class AdService: NSObject, ObservableObject {
     #endif
     
     func initializeAds() {
-        print("🚀 Initializing AdMob SDK...")
-        
         MobileAds.shared.start { status in
             DispatchQueue.main.async {
                 self.isAdMobInitialized = true
                 self.isAdLoaded = true
-                print("✅ AdMob initialized successfully")
-                print("📊 Initialization status: \(status.description)")
-                
-                // Log which ad unit IDs are being used
-                #if DEBUG
-                print("🔧 Using TEST ad units:")
-                print("  Banner: \(AdService.bannerAdUnitID)")
-                print("  Interstitial: \(AdService.interstitialAdUnitID)")
-                #else
-                print("🚀 Using PRODUCTION ad units")
-                #endif
                 
                 // Load interstitial ad after initialization
                 self.loadInterstitialAd()
@@ -71,7 +58,6 @@ class AdService: NSObject, ObservableObject {
     }
     
     func loadInterstitialAd() {
-        print("🚀 Loading interstitial ad...")
         let request = Request()
         
         InterstitialAd.load(with: AdService.interstitialAdUnitID, request: request) { [weak self] ad, error in
@@ -85,25 +71,15 @@ class AdService: NSObject, ObservableObject {
                 self?.interstitialAd = ad
                 self?.interstitialAd?.fullScreenContentDelegate = self
                 self?.isInterstitialLoaded = true
-                print("✅ Interstitial ad loaded successfully")
             }
         }
     }
     
     func showInterstitialAd(from viewController: UIViewController, completion: @escaping () -> Void) {
-        print("🎯 showInterstitialAd called")
-        print("   - interstitialAd: \(interstitialAd != nil ? "loaded" : "nil")")
-        print("   - isInterstitialLoaded: \(isInterstitialLoaded)")
-        print("   - isAdMobInitialized: \(isAdMobInitialized)")
-        
         guard let interstitialAd = interstitialAd, isInterstitialLoaded else {
-            print("⚠️ Interstitial ad not ready, proceeding without ad")
-            print("   - Reason: interstitialAd=\(interstitialAd != nil), isLoaded=\(isInterstitialLoaded)")
             completion()
             return
         }
-        
-        print("📺 Showing interstitial ad...")
         
         // Store completion handler to call when ad is actually dismissed
         self.adCompletionHandler = completion
@@ -121,7 +97,7 @@ class AdService: NSObject, ObservableObject {
 // MARK: - FullScreenContentDelegate
 extension AdService: FullScreenContentDelegate {
     func adWillPresentFullScreenContent(_ ad: FullScreenPresentingAd) {
-        print("📺 Interstitial ad will present")
+        // Ad will present
     }
     
     func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
@@ -132,7 +108,6 @@ extension AdService: FullScreenContentDelegate {
     }
     
     func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
-        print("✅ Interstitial ad dismissed by user")
         // Call completion only when user actually dismisses the ad
         adCompletionHandler?()
         adCompletionHandler = nil

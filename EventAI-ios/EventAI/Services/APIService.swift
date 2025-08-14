@@ -121,70 +121,73 @@ class APIService: ObservableObject {
         
         self.baseURL = baseURL
         self.apiKey = apiKey
-        
-        let environment = Bundle.main.infoDictionary?["BUILD_ENVIRONMENT"] as? String ?? "unknown"
-        print("🚀 EventAI API configured: \(baseURL)")
-        print("🔑 API Key configured: eak_****...****")  
-        print("🏗️ Environment: \(environment)")
     }
     
     func getUsageStats() async throws -> UsageResponse {
         let fullURL = "\(baseURL)/usage"
-        print("📊 Getting usage stats from: \(fullURL)")
+        
+        print("🔄 [APIService] Starting getUsageStats() call to: \(fullURL)")
         
         guard let url = URL(string: fullURL) else {
+            print("❌ [APIService] Invalid URL: \(fullURL)")
             throw APIError.invalidURL
         }
         
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "GET"
         urlRequest.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        urlRequest.timeoutInterval = 20.0 // Increased timeout for slow BigQuery API
+        
+        print("🔄 [APIService] Making HTTP request with timeout: \(urlRequest.timeoutInterval)s")
         
         do {
+            let startTime = Date()
             let (data, response) = try await session.data(for: urlRequest)
+            let duration = Date().timeIntervalSince(startTime)
+            
+            print("✅ [APIService] HTTP request completed in \(String(format: "%.2f", duration))s")
             
             guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ [APIService] Invalid HTTP response")
                 throw APIError.invalidResponse
             }
             
+            print("📊 [APIService] HTTP status: \(httpResponse.statusCode)")
+            
             guard httpResponse.statusCode == 200 else {
-                throw APIError.serverError(httpResponse.statusCode)
+                print("❌ [APIService] API Error: Status \(httpResponse.statusCode)")
+                if httpResponse.statusCode == 401 {
+                    throw APIError.unauthorized
+                } else if httpResponse.statusCode >= 500 {
+                    throw APIError.serverUnavailable
+                } else {
+                    throw APIError.serverError(httpResponse.statusCode)
+                }
             }
             
             let usageResponse = try JSONDecoder().decode(UsageResponse.self, from: data)
-            
-            print("📊 Usage stats: \(usageResponse.remaining) of \(usageResponse.limit) remaining")
+            print("✅ [APIService] Usage API response: count=\(usageResponse.count), limit=\(usageResponse.limit), remaining=\(usageResponse.remaining)")
             return usageResponse
             
+        } catch let error as URLError where error.code == .timedOut {
+            print("⏰ [APIService] Usage API timed out after \(urlRequest.timeoutInterval)s")
+            throw APIError.timeout
         } catch let error as APIError {
+            print("❌ [APIService] Usage API error: \(error)")
             throw error
         } catch {
+            print("❌ [APIService] Usage API network error: \(error)")
             throw APIError.networkError(error)
         }
     }
     
     func convertTextToCalendar(text: String, timezone: String = "America/New_York", userLocation: String? = nil, image: UIImage? = nil) async throws -> CalendarEventResponse {
         let fullURL = "\(baseURL)/convert"
-        print("🔗 Making API call to: \(fullURL)")
-        if image != nil {
-            print("🖼️ Including image attachment")
-        }
         
         guard let url = URL(string: fullURL) else {
             print("❌ Invalid URL: \(fullURL)")
             throw APIError.invalidURL
         }
-        
-        // DEBUG: Print request being sent
-        print("🔍 DEBUG - REQUEST TO BACKEND:")
-        print(String(repeating: "=", count: 80))
-        print("Text: \(text)")
-        print("Timezone: \(timezone)")
-        print("User Location: \(userLocation ?? "nil")")
-        if let image = image {
-            print("Image: Attached (\(image.size.width)x\(image.size.height))")
-        }
-        print(String(repeating: "=", count: 80))
         
         // Always use multipart form data for consistency (works with or without image)
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -192,6 +195,7 @@ class APIService: ObservableObject {
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        urlRequest.timeoutInterval = 30.0 // Longer timeout for conversion requests
         
         var formData = Data()
         
@@ -234,33 +238,22 @@ class APIService: ObservableObject {
             }
             
             guard httpResponse.statusCode == 200 else {
-                throw APIError.serverError(httpResponse.statusCode)
+                if httpResponse.statusCode == 401 {
+                    throw APIError.unauthorized
+                } else if httpResponse.statusCode == 429 {
+                    throw APIError.quotaExceeded
+                } else if httpResponse.statusCode >= 500 {
+                    throw APIError.serverUnavailable
+                } else {
+                    throw APIError.serverError(httpResponse.statusCode)
+                }
             }
             
             let calendarResponse = try JSONDecoder().decode(CalendarEventResponse.self, from: data)
-            
-            // DEBUG: Print response from backend
-            print("🤖 DEBUG - RESPONSE FROM BACKEND:")
-            print(String(repeating: "=", count: 80))
-            print("Events Found: \(calendarResponse.eventsFound)")
-            print("Message: \(calendarResponse.message)")
-            if let events = calendarResponse.events {
-                print("Events:")
-                for (index, event) in events.enumerated() {
-                    print("  [\(index + 1)] \(event.title)")
-                    print("      Start: \(event.startDate)")
-                    print("      End: \(event.endDate ?? "nil")")
-                    print("      Location: \(event.location ?? "nil")")
-                    print("      Recurring: \(event.isRecurring)")
-                    print("      Pattern: \(event.recurrencePattern ?? "nil")")
-                    print("      Timezone: \(event.timezone ?? "nil")")
-                }
-            }
-            print("ICS Content Length: \(calendarResponse.icsContent.count) characters")
-            print(String(repeating: "=", count: 80))
-            
             return calendarResponse
             
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError.timeout
         } catch let error as APIError {
             throw error
         } catch {
@@ -275,6 +268,10 @@ enum APIError: LocalizedError {
     case invalidResponse
     case serverError(Int)
     case networkError(Error)
+    case timeout
+    case unauthorized
+    case quotaExceeded
+    case serverUnavailable
     
     var errorDescription: String? {
         switch self {
@@ -288,6 +285,15 @@ enum APIError: LocalizedError {
             return "Server error: \(code)"
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
+        case .timeout:
+            return "Request timed out"
+        case .unauthorized:
+            return "Authentication failed"
+        case .quotaExceeded:
+            return "Daily limit exceeded"
+        case .serverUnavailable:
+            return "Service temporarily unavailable"
         }
     }
+    
 }

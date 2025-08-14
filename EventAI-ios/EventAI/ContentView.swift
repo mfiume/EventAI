@@ -5,11 +5,79 @@ import CoreLocation
 // Use RevenueCat instead of StoreKit for subscriptions
 typealias SubscriptionService = SubscriptionService_RevenueCat
 
+// MARK: - Simple Error Types
+enum SimpleAppError {
+    case networkTimeout
+    case serverUnavailable
+    case apiQuotaExceeded
+    case authenticationFailed
+    case unknown
+    
+    var message: String {
+        switch self {
+        case .networkTimeout:
+            return "Connection timed out. Please check your internet and try again."
+        case .serverUnavailable:
+            return "Service temporarily unavailable. Please try again in a moment."
+        case .apiQuotaExceeded:
+            return "Daily limit reached. Upgrade to Premium for more conversions."
+        case .authenticationFailed:
+            return "Unable to connect to EventAI services. Please restart the app or contact support if this continues."
+        case .unknown:
+            return "Something went wrong. Please try again."
+        }
+    }
+}
+
+// Simple error state manager
+@MainActor
+class SimpleErrorManager: ObservableObject {
+    @Published var currentError: SimpleAppError?
+    @Published var showError = false
+    
+    func show(_ error: SimpleAppError) {
+        currentError = error
+        showError = true
+        
+        // Auto-dismiss after 4 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            self.dismiss()
+        }
+    }
+    
+    func dismiss() {
+        showError = false
+        currentError = nil
+    }
+    
+    static func convertError(_ error: Error) -> SimpleAppError {
+        if let apiError = error as? APIError {
+            switch apiError {
+            case .timeout:
+                return .networkTimeout
+            case .serverUnavailable, .serverError:
+                return .serverUnavailable
+            case .quotaExceeded:
+                return .apiQuotaExceeded
+            case .unauthorized:
+                return .authenticationFailed
+            default:
+                return .unknown
+            }
+        } else if let urlError = error as? URLError, urlError.code == .timedOut {
+            return .networkTimeout
+        } else {
+            return .unknown
+        }
+    }
+}
+
 struct ContentView: View {
     @State private var inputText = ""
     @State private var isLoading = false
     @State private var showAlert = false
     @State private var alertMessage = ""
+    @StateObject private var errorManager = SimpleErrorManager()
     @State private var showAdBanner = true
     @State private var selectedTimezone = TimeZone.current
     @State private var useLocationForTimezone = false // TEMPORARILY DISABLED for AI address testing
@@ -20,7 +88,8 @@ struct ContentView: View {
     @State private var dailyLimit = 0  // Will be set by backend API
     @State private var premiumDailyLimit = 0  // Will be set by backend API
     @State private var canConvert = true
-    @State private var isLoadingUsage = true
+    @State private var isLoadingUsage = false
+    @State private var debugApiStatus = "Initial"
     @State private var selectedImage: UIImage?
     @State private var showingImagePicker = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
@@ -52,6 +121,13 @@ struct ContentView: View {
                 if !subscriptionService.isPremium {
                     UsageIndicatorView(subscriptionService: subscriptionService, showingPremiumModal: $showingPremiumModal, dailyConversionsUsed: dailyConversionsUsed, dailyLimit: dailyLimit, isLoading: isLoadingUsage)
                 }
+                
+                // TEMPORARY DEBUG: Usage API tracking
+                Text("DEBUG: Status=\(debugApiStatus), isLoading=\(isLoadingUsage), limit=\(dailyLimit), used=\(dailyConversionsUsed)")
+                    .font(.caption2)
+                    .foregroundColor(.red)
+                    .padding(.horizontal)
+                    .background(Color.yellow.opacity(0.3))
                 
                 inputSection
                 
@@ -102,6 +178,34 @@ struct ContentView: View {
             .onTapGesture {
                 // Remove focus and dismiss keyboard when tapping outside text field
                 isTextFieldFocused = false
+            }
+            .overlay(alignment: .top) {
+                if errorManager.showError, let error = errorManager.currentError {
+                    VStack {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(error.message)
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Button("✕") {
+                                errorManager.dismiss()
+                            }
+                            .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(radius: 4)
+                        .padding(.horizontal)
+                        
+                        Spacer()
+                    }
+                    .zIndex(1000)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .animation(.spring(), value: errorManager.showError)
+                }
             }
             .alert("EventAI", isPresented: $showAlert) {
                 Button("OK") { }
@@ -293,10 +397,23 @@ struct ContentView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
-            calendarService.requestCalendarAccess()
-            adService.initializeAds()
+            print("🔄 DEBUG: ContentView onAppear triggered")
+            // Prioritize usage loading first - UI depends on it
             Task {
                 await loadUsageFromBackend()
+            }
+            
+            // Start these in background - they don't block UI
+            Task {
+                await MainActor.run {
+                    calendarService.requestCalendarAccess()
+                }
+            }
+            
+            Task {
+                await MainActor.run {
+                    adService.initializeAds()
+                }
             }
         }
         .onChange(of: scenePhase) { phase in
@@ -552,15 +669,30 @@ struct ContentView: View {
     
     @MainActor
     private func loadUsageFromBackend() async {
+        print("🔄 DEBUG: Starting loadUsageFromBackend()")
+        debugApiStatus = "Starting"
+        
+        // Prevent duplicate concurrent calls
+        guard !isLoadingUsage else {
+            print("🔄 DEBUG: Already loading usage, skipping")
+            debugApiStatus = "Already loading"
+            return
+        }
+        
         // If we already have usage data, update silently without showing spinner
         let hasExistingData = dailyLimit > 0
+        print("🔄 DEBUG: Has existing data: \(hasExistingData)")
         
         if !hasExistingData {
             isLoadingUsage = true
         }
         
         do {
+            print("🔄 DEBUG: Calling apiService.getUsageStats()...")
+            debugApiStatus = "Calling API"
             let usageResponse = try await apiService.getUsageStats()
+            print("🔄 DEBUG: Usage API response: count=\(usageResponse.count), limit=\(usageResponse.limit)")
+            debugApiStatus = "API Success"
             dailyConversionsUsed = usageResponse.count
             dailyLimit = usageResponse.limit
             canConvert = usageResponse.canConvert
@@ -577,15 +709,24 @@ struct ContentView: View {
             }
             
             let action = hasExistingData ? "refreshed" : "loaded"
-            print("📊 Usage \(action): \(usageResponse.remaining) of \(usageResponse.limit) remaining, premium would be \(premiumDailyLimit)")
         } catch {
-            print("❌ Failed to load usage: \(error)")
-            // Keep existing stats on error
+            print("❌ [ContentView] Failed to load usage: \(error)")
+            debugApiStatus = "API Error: \(error.localizedDescription)"
+            
+            // Only show error UI for initial load (when user is waiting)
+            if !hasExistingData {
+                errorManager.show(SimpleErrorManager.convertError(error))
+            }
+            
+            // Set defaults for first-time load failures
+            if dailyLimit == 0 {
+                dailyLimit = 3 // Assume free tier default
+                canConvert = false
+            }
         }
         
-        if !hasExistingData {
-            isLoadingUsage = false
-        }
+        // Always reset loading state after completion
+        isLoadingUsage = false
     }
     
     @MainActor
@@ -597,10 +738,9 @@ struct ContentView: View {
             dailyLimit = usageResponse.limit
             canConvert = usageResponse.canConvert
             
-            print("📊 Usage refreshed: \(usageResponse.remaining) of \(usageResponse.limit) remaining")
         } catch {
-            print("❌ Failed to refresh usage: \(error)")
-            // Keep existing stats on error
+            print("❌ [ContentView] Failed to refresh usage: \(error)")
+            // Silently keep existing stats on background refresh errors
         }
     }
     
@@ -701,8 +841,7 @@ struct ContentView: View {
         } catch {
             await MainActor.run {
                 isLoading = false
-                alertMessage = "Error: \(error.localizedDescription)"
-                showAlert = true
+                errorManager.show(SimpleErrorManager.convertError(error))
             }
         }
     }
@@ -1185,7 +1324,7 @@ struct EventPreviewView: View {
         do {
             try icsContent.write(to: fileURL, atomically: true, encoding: .utf8)
         } catch {
-            print("Error writing ICS file: \(error)")
+            print("❌ Error writing ICS file: \(error)")
         }
         
         return fileURL
@@ -2360,6 +2499,7 @@ func parseDayNamesFromByDay(_ byDay: String) -> [String] {
 // MARK: - About View Content
 struct SubscriptionInfoViewContent: View {
     @Environment(\.openURL) private var openURL
+    @StateObject private var subscriptionService = SubscriptionService()
     
     var body: some View {
         ScrollView {
@@ -2404,6 +2544,94 @@ struct SubscriptionInfoViewContent: View {
                         BulletPointText(text: "You can manage and cancel your subscriptions by going to your account settings on the App Store after purchase")
                         BulletPointText(text: "Payment will be charged to your Apple ID account at confirmation of purchase")
                     }
+                    .padding(.vertical, 8)
+                }
+                .padding(.bottom, 16)
+                
+                // Subscription Management Section
+                GroupBox("Subscription Management") {
+                    VStack(spacing: 12) {
+                        // Show current subscription status
+                        HStack {
+                            Text("Status")
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text(subscriptionService.isPremium ? "Premium Active" : "Free Tier")
+                                .foregroundColor(subscriptionService.isPremium ? .green : .secondary)
+                        }
+                        
+                        if subscriptionService.isPremium {
+                            // Premium user - show Manage Subscription button
+                            Button(action: {
+                                subscriptionService.showCustomerCenter()
+                            }) {
+                                HStack {
+                                    Image(systemName: "person.crop.circle.badge.checkmark")
+                                    Text("Manage Subscription")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(8)
+                            }
+                        } else {
+                            // Free user - show Upgrade and Restore buttons
+                            VStack(spacing: 8) {
+                                Button(action: {
+                                    // Handle upgrade to premium
+                                    Task {
+                                        await subscriptionService.purchaseSubscription()
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "crown.fill")
+                                        Text("Upgrade to Premium")
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.orange)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                                }
+                                
+                                Button(action: {
+                                    // Handle restore purchases
+                                    Task {
+                                        await subscriptionService.restorePurchases()
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "arrow.clockwise")
+                                        Text("Restore Purchases")
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.gray.opacity(0.2))
+                                    .foregroundColor(.primary)
+                                    .cornerRadius(8)
+                                }
+                            }
+                        }
+                        
+                        // Always show refresh subscription button for cross-device sync
+                        Button(action: {
+                            Task {
+                                await subscriptionService.checkSubscriptionStatus()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                Text("Refresh Subscription Status")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundColor(.blue)
+                            .cornerRadius(8)
+                        }
+                    }
+                    .font(.callout)
                     .padding(.vertical, 8)
                 }
                 .padding(.bottom, 16)

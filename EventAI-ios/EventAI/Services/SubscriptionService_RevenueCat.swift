@@ -23,7 +23,6 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
     
     override init() {
         super.init()
-        print("🔧 Initializing RevenueCat SubscriptionService...")
         configureRevenueCat()
         Task {
             await loadOfferings()
@@ -39,29 +38,22 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
             print("⚠️ RevenueCat Configuration Issues:")
             configErrors.forEach { print("   - \($0)") }
             print("   See RevenueCatConfig.swift for setup instructions")
+            // Continue anyway to get more detailed error messages
         }
         
-        // Configure RevenueCat
+        // Configure RevenueCat with proper error handling
         Purchases.configure(withAPIKey: apiKey)
         
-        // Set debug logs based on configuration
-        if RevenueCatConfig.enableDebugLogging {
-            Purchases.logLevel = .debug
-        } else {
-            Purchases.logLevel = .warn
-        }
+        // Disable debug logs to reduce console noise
+        Purchases.logLevel = .error
         
         // Set up delegate for subscription updates
         Purchases.shared.delegate = self
-        
-        print("✅ RevenueCat configured with API key: \(apiKey.prefix(8))...")
     }
     
     // MARK: - Public Interface (matches original SubscriptionService)
     
     func purchaseSubscription() async {
-        print("🛒 Starting RevenueCat subscription purchase...")
-        
         isLoading = true
         purchaseError = nil
         
@@ -77,15 +69,11 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
                 return
             }
             
-            print("📦 Purchasing package: \(monthlyPackage.storeProduct.localizedTitle) - \(monthlyPackage.storeProduct.localizedPriceString)")
-            
             // Perform the purchase
             let (_, customerInfo, _) = try await Purchases.shared.purchase(package: monthlyPackage)
             
             // Update subscription status from the result
             await updateSubscriptionStatus(from: customerInfo)
-            
-            print("✅ Purchase flow completed - Premium: \(isPremium)")
             
         } catch let error as ErrorCode {
             print("❌ RevenueCat purchase error: \(error)")
@@ -131,6 +119,18 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
             await updateSubscriptionStatus(from: customerInfo)
         } catch {
             print("❌ Failed to get customer info: \(error)")
+            if let revenueCatError = error as? ErrorCode {
+                print("   RevenueCat error code: \(revenueCatError)")
+                print("   Error description: \(revenueCatError.localizedDescription)")
+                
+                // Check for common API key issues
+                if revenueCatError.localizedDescription.contains("401") || 
+                   revenueCatError.localizedDescription.lowercased().contains("unauthorized") {
+                    print("   🔑 This appears to be an API key authentication issue")
+                    print("   📝 Make sure the RevenueCat app is properly configured in the dashboard")
+                    print("   📝 Verify that the bundle ID matches between Xcode and RevenueCat dashboard")
+                }
+            }
             // Don't set purchaseError for status checks - just log
         }
     }
@@ -148,8 +148,6 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
     /// Show RevenueCat Customer Center for in-app subscription management
     /// This is a RevenueCat-specific feature that provides native subscription management UI
     func showCustomerCenter() {
-        print("👤 Showing RevenueCat Customer Center...")
-        
         if #available(iOS 15.0, *) {
             let customerCenterViewController = CustomerCenterViewController()
             
@@ -178,11 +176,8 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
     
     /// Link user identity with RevenueCat for cross-platform subscription sharing
     func setUserIdentity(_ userID: String) async {
-        print("👤 Setting RevenueCat user identity: \(userID)")
-        
         do {
-            let (customerInfo, created) = try await Purchases.shared.logIn(userID)
-            print("✅ User identity set - Created: \(created)")
+            let (customerInfo, _) = try await Purchases.shared.logIn(userID)
             await updateSubscriptionStatus(from: customerInfo)
         } catch {
             print("❌ Failed to set user identity: \(error)")
@@ -192,12 +187,9 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
     
     /// Log out current user (useful for testing or account switching)
     func logOutUser() async {
-        print("👤 Logging out RevenueCat user...")
-        
         do {
             let customerInfo = try await Purchases.shared.logOut()
             await updateSubscriptionStatus(from: customerInfo)
-            print("✅ User logged out successfully")
         } catch {
             print("❌ Failed to log out user: \(error)")
         }
@@ -210,10 +202,8 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
             let offerings = try await Purchases.shared.offerings()
             currentOffering = offerings.current
             
-            if let monthlyPackage = currentOffering?.monthly {
-                print("💰 Monthly subscription loaded: \(monthlyPackage.storeProduct.localizedTitle) - \(monthlyPackage.storeProduct.localizedPriceString)")
-            } else {
-                print("⚠️ No monthly subscription package found in offerings")
+            if currentOffering?.monthly == nil {
+                print("❌ No monthly subscription package found")
             }
             
         } catch {
@@ -230,14 +220,6 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
         isPremium = hasActiveSubscription
         expiryDate = premiumEntitlement?.expirationDate
         subscriptionStatus = isPremium ? "Premium" : "Free"
-        
-        // Debug logging
-        print("📊 Subscription status updated:")
-        print("   Premium: \(isPremium)")
-        print("   Status: \(subscriptionStatus)")
-        print("   Expires: \(expiryDate?.description ?? "N/A")")
-        print("   Product: \(premiumEntitlement?.productIdentifier ?? "N/A")")
-        print("   Entitlements: \(customerInfo.entitlements.active.keys)")
     }
     
     private func handleRevenueCatError(_ error: ErrorCode) {
@@ -267,7 +249,6 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
 extension SubscriptionService_RevenueCat: PurchasesDelegate {
     /// Called when RevenueCat receives updated customer information
     func purchases(_ purchases: Purchases, receivedUpdated customerInfo: CustomerInfo) {
-        print("🔄 RevenueCat customer info updated")
         Task {
             await updateSubscriptionStatus(from: customerInfo)
         }
@@ -275,8 +256,6 @@ extension SubscriptionService_RevenueCat: PurchasesDelegate {
     
     /// Called when a promotional offer becomes available
     func purchases(_ purchases: Purchases, readyForPromotedProduct product: StoreProduct, purchase startPurchase: @escaping StartPurchaseBlock) {
-        print("🎁 Promotional product available: \(product.localizedTitle)")
-        
         // Auto-handle promotional purchases
         startPurchase { (transaction, customerInfo, error, cancelled) in
             Task {
@@ -286,7 +265,6 @@ extension SubscriptionService_RevenueCat: PurchasesDelegate {
                         self.purchaseError = "Promotional purchase failed"
                     }
                 } else if !cancelled, let customerInfo = customerInfo {
-                    print("✅ Promotional purchase successful")
                     await self.updateSubscriptionStatus(from: customerInfo)
                 }
             }
