@@ -39,8 +39,8 @@ except ImportError as e:
 from bigquery_service import get_bigquery_service  # Keep for analytics/migration
 from firestore_service import get_firestore_service  # Use for fast operations
 
-# Import authentication service
-from auth_service import require_api_key, optional_api_key, APIKeyInfo
+# Import Firestore-based authentication service (FAST)
+from auth_service_firestore import require_api_key, optional_api_key, APIKeyInfo, setup_initial_api_keys
 
 # Load environment variables from secrets directory (if exists locally)
 if os.path.exists("secrets/secrets.env"):
@@ -91,6 +91,9 @@ else:
 # Initialize database services
 bq_service = get_bigquery_service()  # Keep for analytics and migration
 fs_service = get_firestore_service()  # Use for fast real-time operations
+
+# Setup initial API keys in Firestore for immediate functionality
+setup_initial_api_keys()
 
 # Usage limits (production values)
 FREE_DAILY_LIMIT = 2  # Production: 2 free conversions per day

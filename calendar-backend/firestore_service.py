@@ -26,6 +26,7 @@ class FirestoreService:
         self.subscriptions_collection = "subscriptions"
         self.conversion_events_collection = "conversion_events"
         self.app_events_collection = "app_events"
+        self.api_keys_collection = "api_keys"
         
         print(f"🔥 Firestore service initialized for project: levelup-467902")
     
@@ -333,6 +334,127 @@ class FirestoreService:
         except Exception as e:
             print(f"❌ Failed to migrate user {user_id[:8]}...: {e}")
             return False
+    
+    def validate_api_key(self, api_key: str) -> Dict:
+        """Validate API key against Firestore (FAST) - replaces BigQuery validation"""
+        if not api_key or not api_key.startswith('eak_'):
+            return {"valid": False, "error": "Invalid API key format"}
+        
+        try:
+            # Query Firestore for API key (sub-second response)
+            key_ref = self.client.collection(self.api_keys_collection).document(api_key)
+            key_doc = key_ref.get()
+            
+            if not key_doc.exists:
+                return {"valid": False, "error": "API key not found"}
+            
+            key_data = key_doc.to_dict()
+            
+            # Check if key is active
+            if not key_data.get("is_active", True):
+                return {"valid": False, "error": "API key is inactive"}
+            
+            # Check expiration if set
+            expires_at = key_data.get("expires_at")
+            if expires_at and expires_at < datetime.now(timezone.utc):
+                return {"valid": False, "error": "API key has expired"}
+            
+            # Update last_used timestamp
+            key_ref.update({
+                "last_used": datetime.now(timezone.utc),
+                "usage_count": firestore.Increment(1)
+            })
+            
+            return {
+                "valid": True,
+                "key_id": api_key,
+                "key_name": key_data.get("key_name", "Unknown"),
+                "permissions": key_data.get("permissions", ["usage", "convert"]),
+                "rate_limit": key_data.get("rate_limit", 1000)
+            }
+            
+        except Exception as e:
+            print(f"❌ API key validation error: {e}")
+            return {"valid": False, "error": "Validation service error"}
+    
+    def create_api_key(self, key_name: str, permissions: List[str] = None, 
+                      rate_limit: int = 1000, expires_days: int = None) -> str:
+        """Create a new API key in Firestore"""
+        import secrets
+        
+        # Generate secure API key
+        api_key = "eak_" + secrets.token_hex(32)
+        
+        if permissions is None:
+            permissions = ["usage", "convert", "subscription"]
+        
+        expires_at = None
+        if expires_days:
+            expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
+        
+        key_data = {
+            "key_id": api_key,
+            "key_name": key_name,
+            "permissions": permissions,
+            "rate_limit": rate_limit,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc),
+            "expires_at": expires_at,
+            "last_used": None,
+            "usage_count": 0
+        }
+        
+        # Store in Firestore
+        key_ref = self.client.collection(self.api_keys_collection).document(api_key)
+        key_ref.set(key_data)
+        
+        print(f"🔑 Created API key: {key_name} ({api_key[:12]}...)")
+        return api_key
+    
+    def migrate_api_keys_from_bigquery(self, bq_service) -> int:
+        """Migrate API keys from BigQuery to Firestore"""
+        try:
+            # Get all API keys from BigQuery
+            query = f"""
+            SELECT api_key, key_name, permissions, rate_limit, is_active, 
+                   created_at, expires_at, last_used, usage_count
+            FROM `{bq_service.project_id}.{bq_service.dataset_id}.api_keys`
+            ORDER BY created_at DESC
+            """
+            api_keys = bq_service._execute_query(query)
+            
+            migrated_count = 0
+            batch = self.client.batch()
+            
+            for key_data in api_keys:
+                api_key = key_data["api_key"]
+                
+                # Convert BigQuery data to Firestore format
+                firestore_data = {
+                    "key_id": api_key,
+                    "key_name": key_data.get("key_name", "Migrated Key"),
+                    "permissions": key_data.get("permissions", ["usage", "convert"]),
+                    "rate_limit": key_data.get("rate_limit", 1000),
+                    "is_active": key_data.get("is_active", True),
+                    "created_at": key_data.get("created_at", datetime.now(timezone.utc)),
+                    "expires_at": key_data.get("expires_at"),
+                    "last_used": key_data.get("last_used"),
+                    "usage_count": key_data.get("usage_count", 0)
+                }
+                
+                # Add to batch
+                key_ref = self.client.collection(self.api_keys_collection).document(api_key)
+                batch.set(key_ref, firestore_data)
+                migrated_count += 1
+            
+            # Commit batch
+            batch.commit()
+            print(f"✅ Migrated {migrated_count} API keys from BigQuery to Firestore")
+            return migrated_count
+            
+        except Exception as e:
+            print(f"❌ Failed to migrate API keys: {e}")
+            return 0
 
 # Global instance
 firestore_service = None
