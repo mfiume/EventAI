@@ -389,10 +389,13 @@ CRITICAL INSTRUCTIONS:
 5. Email send date ({email_reference_date}) is only for interpreting relative terms, NOT for overriding absolute dates in the content
 
 SPECIAL HANDLING FOR EMAIL EXTRACTION ISSUES:
-- If the email content appears to be incomplete (e.g., just "Email from sender with subject: Title"), look carefully at the subject line and any available headers for event information
-- Extract event details from subject lines when they contain date/time/location information
-- Be more aggressive in interpreting partial information when the email body seems corrupted or incomplete
-- Concert tickets, event announcements, and booking confirmations often have key details in the subject line
+- If the email content appears to be incomplete or the body could not be decoded, focus heavily on the SUBJECT LINE
+- For ticket/event emails (especially from Ticketmaster, StubHub, etc.), the subject line often contains the core event information
+- Extract event details aggressively from subject lines containing artist names, venues, dates, times
+- When you see "TICKET/EVENT EMAIL DETECTED", prioritize subject line parsing over body content
+- Concert tickets and event announcements frequently have all key details in the subject line due to HTML decoding issues
+- Look for patterns like: "Artist: Tour Name", "Get Info About Your Mobile Tickets for [Event]", "[Venue] - [Date] - [Artist]"
+- Make reasonable assumptions about missing details (e.g., evening start times for concerts, 3-hour duration)
 
 Email Content:
 {text}
