@@ -27,8 +27,17 @@ except ImportError as e:
     print(f"Gmail integration not available: {e}")
     GMAIL_INTEGRATION_ENABLED = False
 
-# Import our BigQuery service
-from bigquery_service import get_bigquery_service
+# Import RevenueCat webhook integration
+try:
+    from revenueCat_webhooks import webhook_router
+    REVENUECAT_WEBHOOKS_ENABLED = True
+except ImportError as e:
+    print(f"RevenueCat webhooks not available: {e}")
+    REVENUECAT_WEBHOOKS_ENABLED = False
+
+# Import our database services
+from bigquery_service import get_bigquery_service  # Keep for analytics/migration
+from firestore_service import get_firestore_service  # Use for fast operations
 
 # Import authentication service
 from auth_service import require_api_key, optional_api_key, APIKeyInfo
@@ -54,6 +63,11 @@ if GMAIL_INTEGRATION_ENABLED:
     app.include_router(gmail_router)
     print("✅ Gmail integration enabled")
 
+# Include RevenueCat webhook router if available
+if REVENUECAT_WEBHOOKS_ENABLED:
+    app.include_router(webhook_router)
+    print("✅ RevenueCat webhooks enabled")
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -74,8 +88,9 @@ else:
     print("⚠️ Anthropic API key not configured")
     anthropic_error = "API key not configured"
 
-# Initialize BigQuery service for persistent storage
-bq_service = get_bigquery_service()
+# Initialize database services
+bq_service = get_bigquery_service()  # Keep for analytics and migration
+fs_service = get_firestore_service()  # Use for fast real-time operations
 
 # Usage limits (production values)
 FREE_DAILY_LIMIT = 2  # Production: 2 free conversions per day
@@ -108,14 +123,14 @@ class UserUsageService:
     
     @staticmethod
     def ensure_user_exists(user_id: str, request: Request):
-        """Ensure user record exists in BigQuery"""
+        """Ensure user record exists in Firestore"""
         device_id = request.headers.get("X-Device-ID")
         apple_id = request.headers.get("X-Apple-ID")
         user_agent = request.headers.get("User-Agent")
         ip_address = request.client.host
         
-        # Create or update user record
-        bq_service.get_or_create_user(
+        # Create or update user record in Firestore (fast)
+        fs_service.get_or_create_user(
             user_id=user_id,
             device_id=device_id,
             apple_id=apple_id,
@@ -167,21 +182,21 @@ class UserUsageService:
     
     @staticmethod
     def get_user_usage(user_id: str) -> Dict:
-        """Get current usage stats for user from BigQuery"""
-        # Get usage data from BigQuery (automatically handles date-based resets)
-        usage_data = bq_service.get_user_usage(user_id)
+        """Get current usage stats for user from Firestore (FAST)"""
+        # Get usage data from Firestore (sub-second response)
+        usage_data = fs_service.get_user_usage(user_id)
         
         # Convert to format expected by existing code
         return {
             "count": usage_data.get("conversion_count", 0),
-            "last_reset": str(usage_data.get("usage_date", date.today())),
-            "first_use": str(usage_data.get("usage_date", date.today()))
+            "last_reset": str(usage_data.get("usage_date", date.today().isoformat())),
+            "first_use": str(usage_data.get("usage_date", date.today().isoformat()))
         }
     
     @staticmethod
     def is_premium(user_id: str) -> bool:
-        """Check if user has active premium subscription from BigQuery"""
-        return bq_service.is_user_premium(user_id)
+        """Check if user has active premium subscription from Firestore (FAST)"""
+        return fs_service.is_user_premium(user_id)
     
     @staticmethod
     def can_convert(user_id: str) -> Dict:
@@ -212,8 +227,8 @@ class UserUsageService:
     
     @staticmethod
     def increment_usage(user_id: str):
-        """Increment user's conversion count in BigQuery"""
-        new_count = bq_service.increment_usage(user_id)
+        """Increment user's conversion count in Firestore (FAST)"""
+        new_count = fs_service.increment_usage(user_id)
         print(f"📊 User {user_id[:8]}... used {new_count} conversions today")
 
 # Initialize usage service
@@ -608,7 +623,7 @@ async def api_debug_info():
 async def get_usage_stats(request: Request, api_key_info: APIKeyInfo = Depends(require_api_key)):
     """Get current user usage statistics"""
     user_id = usage_service.get_user_id(request)
-    # Ensure user exists in BigQuery
+    # Ensure user exists in Firestore
     usage_service.ensure_user_exists(user_id, request)
     usage_check = usage_service.can_convert(user_id)
     
@@ -627,12 +642,12 @@ async def get_usage_stats(request: Request, api_key_info: APIKeyInfo = Depends(r
 async def verify_subscription(subscription: SubscriptionRequest, request: Request):
     """Verify and activate subscription (simplified version - implement StoreKit validation in production)"""
     user_id = usage_service.get_user_id(request)
-    # Ensure user exists in BigQuery
+    # Ensure user exists in Firestore
     usage_service.ensure_user_exists(user_id, request)
     
     # TODO: Implement proper App Store receipt validation
-    # For now, create subscription in BigQuery
-    subscription_id = bq_service.create_subscription(
+    # Create subscription in Firestore (fast)
+    subscription_id = fs_service.create_subscription(
         user_id=user_id,
         product_id=subscription.product_id,
         device_id=subscription.device_id,
@@ -653,7 +668,7 @@ async def verify_subscription(subscription: SubscriptionRequest, request: Reques
 async def get_subscription_status(request: Request):
     """Get current subscription status"""
     user_id = usage_service.get_user_id(request)
-    # Ensure user exists in BigQuery
+    # Ensure user exists in Firestore
     usage_service.ensure_user_exists(user_id, request)
     is_premium = usage_service.is_premium(user_id)
     
@@ -683,7 +698,7 @@ async def convert_to_calendar(
     
     # Photo support is now available for all users (free and premium)
     
-    # Ensure user exists in BigQuery
+    # Ensure user exists in Firestore
     usage_service.ensure_user_exists(user_id, request)
     
     # Check usage limits before processing
@@ -712,8 +727,8 @@ async def convert_to_calendar(
     if result.eventsFound > 0:
         usage_service.increment_usage(user_id)
         
-        # Log conversion event for analytics
-        bq_service.log_conversion_event(
+        # Log conversion event for analytics (Firestore - fast)
+        fs_service.log_conversion_event(
             user_id=user_id,
             request_text=text[:200],  # First 200 chars for privacy
             has_image=bool(image),
@@ -726,8 +741,8 @@ async def convert_to_calendar(
         updated_usage = usage_service.can_convert(user_id)
         result.usage = updated_usage
     else:
-        # Log failed conversion
-        bq_service.log_conversion_event(
+        # Log failed conversion (Firestore - fast)
+        fs_service.log_conversion_event(
             user_id=user_id,
             request_text=text[:200],
             has_image=bool(image),
