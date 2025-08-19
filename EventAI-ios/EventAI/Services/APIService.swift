@@ -108,6 +108,12 @@ class APIService: ObservableObject {
     private let baseURL: String
     private let apiKey: String
     private let session = URLSession.shared
+    private let deviceId: String
+    
+    // Public accessor for diagnostic information
+    var deviceIdentifier: String {
+        return deviceId
+    }
     
     init() {
         // Get configuration from xcconfig via Info.plist
@@ -121,6 +127,10 @@ class APIService: ObservableObject {
         
         self.baseURL = baseURL
         self.apiKey = apiKey
+        
+        // Generate stable device identifier for user tracking
+        self.deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        print("🔧 [APIService] Device ID: \(self.deviceId)")
     }
     
     func getUsageStats() async throws -> UsageResponse {
@@ -136,7 +146,10 @@ class APIService: ObservableObject {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "GET"
         urlRequest.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        urlRequest.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
         urlRequest.timeoutInterval = 20.0 // Increased timeout for slow BigQuery API
+        
+        print("🔧 [APIService] Usage API call - Device ID: \(deviceId)")
         
         print("🔄 [APIService] Making HTTP request with timeout: \(urlRequest.timeoutInterval)s")
         
@@ -195,6 +208,7 @@ class APIService: ObservableObject {
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        urlRequest.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
         urlRequest.timeoutInterval = 30.0 // Longer timeout for conversion requests
         
         var formData = Data()
@@ -251,6 +265,122 @@ class APIService: ObservableObject {
             
             let calendarResponse = try JSONDecoder().decode(CalendarEventResponse.self, from: data)
             return calendarResponse
+            
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError.timeout
+        } catch let error as APIError {
+            throw error
+        } catch {
+            throw APIError.networkError(error)
+        }
+    }
+    
+    // MARK: - Subscription Sync
+    func syncSubscriptionStatus(isPremium: Bool, productId: String = "eventai_premium", appleTransactionId: UInt64? = nil, appleOriginalTransactionId: UInt64? = nil) async throws {
+        let fullURL = "\(baseURL)/subscription/sync"
+        
+        guard let url = URL(string: fullURL) else {
+            throw APIError.invalidURL
+        }
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        urlRequest.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
+        urlRequest.timeoutInterval = 15.0
+        
+        var syncData: [String: Any] = [
+            "is_premium": isPremium,
+            "product_id": productId,
+            "source": "storekit"
+        ]
+        
+        // Add Apple transaction IDs for verification
+        if let transactionId = appleTransactionId {
+            syncData["apple_transaction_id"] = String(transactionId)
+        }
+        if let originalTransactionId = appleOriginalTransactionId {
+            syncData["apple_original_transaction_id"] = String(originalTransactionId)
+        }
+        
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: syncData)
+        
+        do {
+            let (_, response) = try await session.data(for: urlRequest)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.invalidResponse
+            }
+            
+            guard httpResponse.statusCode == 200 else {
+                if httpResponse.statusCode == 401 {
+                    throw APIError.unauthorized
+                } else {
+                    throw APIError.serverError(httpResponse.statusCode)
+                }
+            }
+            
+            print("✅ Successfully synced subscription status: isPremium=\(isPremium)")
+            
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError.timeout
+        } catch let error as APIError {
+            throw error
+        } catch {
+            throw APIError.networkError(error)
+        }
+    }
+    
+    // MARK: - Enhanced Subscription Sync
+    func syncSubscriptionStatusEnhanced(isPremium: Bool, productId: String = "eventai_premium", appleTransactionId: UInt64? = nil, appleOriginalTransactionId: UInt64? = nil) async throws -> [String: Any] {
+        let fullURL = "\(baseURL)/subscription/sync/enhanced"
+        
+        guard let url = URL(string: fullURL) else {
+            throw APIError.invalidURL
+        }
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        urlRequest.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
+        urlRequest.timeoutInterval = 15.0
+        
+        var syncData: [String: Any] = [
+            "is_premium": isPremium,
+            "product_id": productId,
+            "source": "storekit_enhanced"
+        ]
+        
+        // Add Apple transaction IDs for verification
+        if let transactionId = appleTransactionId {
+            syncData["apple_transaction_id"] = String(transactionId)
+        }
+        if let originalTransactionId = appleOriginalTransactionId {
+            syncData["apple_original_transaction_id"] = String(originalTransactionId)
+        }
+        
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: syncData)
+        
+        do {
+            let (data, response) = try await session.data(for: urlRequest)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.invalidResponse
+            }
+            
+            guard httpResponse.statusCode == 200 else {
+                if httpResponse.statusCode == 401 {
+                    throw APIError.unauthorized
+                } else {
+                    throw APIError.serverError(httpResponse.statusCode)
+                }
+            }
+            
+            let responseJson = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+            print("✅ Enhanced subscription sync response: \(responseJson)")
+            return responseJson
             
         } catch let error as URLError where error.code == .timedOut {
             throw APIError.timeout

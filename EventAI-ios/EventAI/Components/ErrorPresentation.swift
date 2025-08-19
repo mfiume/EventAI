@@ -38,7 +38,7 @@ enum AppError {
         case .subscriptionFailed:
             return "Unable to process your subscription. Please try again or contact support if the issue persists."
         case .apiQuotaExceeded:
-            return "You've reached your daily limit. Upgrade to Premium for more conversions or try again tomorrow."
+            return "Daily Limit Reached. Try again tomorrow."
         case .invalidResponse:
             return "We received an unexpected response. Please try again."
         case .permissionDenied:

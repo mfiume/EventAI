@@ -10,13 +10,16 @@ class SubscriptionService_StoreKit: ObservableObject {
     @Published var purchaseError: String?
     
     // Product IDs - these need to be configured in App Store Connect
-    private let monthlySubscriptionID = "eventai_premium_monthly"
+    private let monthlySubscriptionID = "eventai_premium"
     
     private var products: [Product] = []
     private var updateListenerTask: Task<Void, Error>?
     
     init() {
         print("🔧 Initializing SubscriptionService...")
+        print("🔍 StoreKit environment check:")
+        print("   - Can make payments: \(AppStore.canMakePayments)")
+        
         updateListenerTask = listenForTransactions()
         Task {
             await loadProducts()
@@ -30,17 +33,91 @@ class SubscriptionService_StoreKit: ObservableObject {
     
     // MARK: - Product Loading
     private func loadProducts() async {
-        print("🔧 Loading products for ID: \(monthlySubscriptionID)")
+        print("🔧 Loading products for Product ID: \(monthlySubscriptionID)")
+        print("🔍 Bundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")")
+        print("🔍 Expected subscription group: 21758566")
+        
+        // Remove testing code for production build
+        // await testStoreKitDirectly()
+        
         do {
             products = try await Product.products(for: [monthlySubscriptionID])
             print("✅ Loaded \(products.count) products")
             
             for product in products {
                 print("📦 Product: \(product.id) - \(product.displayName) - \(product.displayPrice)")
-                print("   Type: \(product.type), Available: \(product.subscription != nil)")
+            }
+            
+            if products.isEmpty {
+                print("⚠️ No products found for Product ID: \(monthlySubscriptionID)")
             }
         } catch {
             print("❌ Failed to load products: \(error)")
+        }
+    }
+    
+    // MARK: - StoreKit Direct Testing
+    private func testStoreKitDirectly() async {
+        print("🧪 TESTING StoreKit API directly...")
+        
+        // Test 1: Check if StoreKit is available
+        print("🔍 AppStore.canMakePayments: \(AppStore.canMakePayments)")
+        
+        // Test 2: Try to load ALL products (empty array)
+        do {
+            let allProducts = try await Product.products(for: [])
+            print("🔍 All available products count: \(allProducts.count)")
+            for product in allProducts {
+                print("   - Available: \(product.id) - \(product.displayName)")
+            }
+        } catch {
+            print("❌ Failed to load all products: \(error)")
+        }
+        
+        // Test 3: Check current entitlements
+        print("🔍 Checking current entitlements...")
+        var entitlementCount = 0
+        for await result in Transaction.currentEntitlements {
+            entitlementCount += 1
+            do {
+                let transaction = try checkVerified(result)
+                print("   - Entitlement: \(transaction.productID)")
+            } catch {
+                print("   - Invalid entitlement: \(error)")
+            }
+        }
+        print("🔍 Total entitlements: \(entitlementCount)")
+        
+        // Test 4: Check subscription status API
+        do {
+            let statuses = try await Product.SubscriptionInfo.status(for: "21758566")
+            print("🔍 Subscription statuses for group 21758566: \(statuses.count)")
+            for status in statuses {
+                print("   - Status: \(status.state) for transaction: \(status.transaction)")
+            }
+        } catch {
+            print("❌ Failed to get subscription status: \(error)")
+        }
+        
+        // Test 5: Try common subscription group IDs
+        let commonGroupIDs = ["21549599", "21758566", "default", "group1"]
+        for groupID in commonGroupIDs {
+            do {
+                let statuses = try await Product.SubscriptionInfo.status(for: groupID)
+                if !statuses.isEmpty {
+                    print("✅ Found subscription group: \(groupID) with \(statuses.count) statuses")
+                }
+            } catch {
+                print("🔍 Group \(groupID): No access or doesn't exist")
+            }
+        }
+        
+        // Test 6: Check StoreKit Configuration environment
+        print("🔍 StoreKit Environment Info:")
+        print("   - Bundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")")
+        print("   - Can make payments: \(AppStore.canMakePayments)")
+        if let infoPlist = Bundle.main.infoDictionary {
+            print("   - App Store ID: \(infoPlist["CFBundleIdentifier"] as? String ?? "none")")
         }
     }
     
@@ -199,6 +276,11 @@ class SubscriptionService_StoreKit: ObservableObject {
         subscriptionStatus = isPremium ? "Premium" : "Free"
         
         print("📊 Subscription status updated - Premium: \(isPremium)")
+        
+        // Sync subscription status with backend
+        Task {
+            await syncWithBackend()
+        }
     }
     
     // MARK: - Transaction Listener
@@ -234,6 +316,80 @@ class SubscriptionService_StoreKit: ObservableObject {
     
     var monthlyPriceString: String? {
         return monthlyProduct?.displayPrice
+    }
+    
+    // MARK: - Backend Sync
+    private func syncWithBackend() async {
+        let apiService = APIService()
+        
+        // Get the latest valid transaction for verification
+        var latestTransaction: Transaction?
+        for await result in Transaction.currentEntitlements {
+            do {
+                let transaction = try checkVerified(result)
+                if transaction.productID == monthlySubscriptionID {
+                    latestTransaction = transaction
+                    break
+                }
+            } catch {
+                continue
+            }
+        }
+        
+        do {
+            // Use enhanced sync for better reliability
+            let response = try await apiService.syncSubscriptionStatusEnhanced(
+                isPremium: isPremium, 
+                productId: monthlySubscriptionID,
+                appleTransactionId: latestTransaction?.id,
+                appleOriginalTransactionId: latestTransaction?.originalID
+            )
+            
+            print("✅ Enhanced sync completed successfully")
+            
+            // Verify sync worked by checking response
+            if let verifiedPremium = response["verified_premium"] as? Bool,
+               let dailyLimit = response["daily_limit"] as? Int {
+                print("📊 Backend verification: Premium=\(verifiedPremium), Daily Limit=\(dailyLimit)")
+                
+                if isPremium && (!verifiedPremium || dailyLimit != 20) {
+                    print("⚠️ Sync may not have worked - backend doesn't show premium status")
+                    
+                    // Fallback to original sync method
+                    print("🔄 Trying fallback sync method...")
+                    try await apiService.syncSubscriptionStatus(
+                        isPremium: isPremium, 
+                        productId: monthlySubscriptionID,
+                        appleTransactionId: latestTransaction?.id,
+                        appleOriginalTransactionId: latestTransaction?.originalID
+                    )
+                    print("✅ Fallback sync completed")
+                }
+            }
+            
+        } catch {
+            print("⚠️ Enhanced sync failed: \(error)")
+            
+            // Fallback to original sync method
+            do {
+                try await apiService.syncSubscriptionStatus(
+                    isPremium: isPremium, 
+                    productId: monthlySubscriptionID,
+                    appleTransactionId: latestTransaction?.id,
+                    appleOriginalTransactionId: latestTransaction?.originalID
+                )
+                print("✅ Fallback sync successful")
+            } catch {
+                print("⚠️ All sync methods failed: \(error)")
+                // Don't throw error - sync is not critical for local functionality
+            }
+        }
+    }
+    
+    // MARK: - Force Sync (for debugging/testing)
+    func forceBackendSync() async {
+        print("🔄 Force syncing subscription status with backend...")
+        await syncWithBackend()
     }
 }
 

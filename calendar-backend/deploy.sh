@@ -57,10 +57,12 @@ gcloud run deploy $SERVICE_NAME \
   --set-env-vars GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
   --set-env-vars GOOGLE_REDIRECT_URI="https://eventai.leveluplife.app/api/gmail/oauth/callback" \
   --set-env-vars REVENUECAT_WEBHOOK_SECRET="${REVENUECAT_WEBHOOK_SECRET}" \
-  --memory 1Gi \
-  --cpu 1 \
+  --memory 2Gi \
+  --cpu 2 \
+  --min-instances 1 \
   --max-instances 10 \
-  --timeout 300
+  --timeout 300 \
+  --concurrency 80
 
 echo "✅ Deployment complete!"
 

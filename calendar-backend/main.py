@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone, date
 import re
 from typing import Optional, Union, Dict
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import json
 from geopy.geocoders import Nominatim
 from timezonefinder import TimezoneFinder
@@ -82,6 +84,33 @@ anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 anthropic_api_url = "https://api.anthropic.com/v1/messages"
 anthropic_error = None
 
+# Create a session with connection pooling and retry strategy for better reliability
+def create_http_session():
+    """Create an HTTP session with connection pooling and retry strategy"""
+    session = requests.Session()
+    
+    # Configure retry strategy
+    retry_strategy = Retry(
+        total=3,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["HEAD", "GET", "OPTIONS", "POST"],
+        backoff_factor=1
+    )
+    
+    adapter = HTTPAdapter(
+        max_retries=retry_strategy,
+        pool_connections=10,
+        pool_maxsize=20
+    )
+    
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
+    return session
+
+# Create global session for connection reuse
+http_session = create_http_session()
+
 if anthropic_api_key:
     print("✅ Anthropic API key configured - using direct HTTP API")
 else:
@@ -96,8 +125,8 @@ fs_service = get_firestore_service()  # Use for fast real-time operations
 setup_initial_api_keys()
 
 # Usage limits (production values)
-FREE_DAILY_LIMIT = 2  # Production: 2 free conversions per day
-PREMIUM_DAILY_LIMIT = 20  # Production: 20 premium conversions per day
+FREE_DAILY_LIMIT = 2  # Production default: 2 free conversions per day 
+PREMIUM_DAILY_LIMIT = 20  # Production default: 20 premium conversions per day
 
 # Reset configuration
 RESET_TIMEZONE = "America/New_York"  # Eastern Time
@@ -202,15 +231,22 @@ class UserUsageService:
         return fs_service.is_user_premium(user_id)
     
     @staticmethod
-    def can_convert(user_id: str) -> Dict:
+    def can_convert(user_id: str, api_key_info=None) -> Dict:
         """Check if user can perform a conversion"""
         is_premium = UserUsageService.is_premium(user_id)
         usage = UserUsageService.get_user_usage(user_id)
         
-        if is_premium:
-            limit = PREMIUM_DAILY_LIMIT
+        # Use custom limits from API key if available, otherwise use default limits
+        if api_key_info:
+            if is_premium:
+                limit = api_key_info.get("premium_daily_limit") or PREMIUM_DAILY_LIMIT
+            else:
+                limit = api_key_info.get("free_daily_limit") or FREE_DAILY_LIMIT
         else:
-            limit = FREE_DAILY_LIMIT
+            if is_premium:
+                limit = PREMIUM_DAILY_LIMIT
+            else:
+                limit = FREE_DAILY_LIMIT
         
         can_proceed = usage["count"] < limit
         remaining = max(0, limit - usage["count"])
@@ -249,7 +285,84 @@ async def app_root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "EventAI API"}
+    """Comprehensive health check with dependency validation"""
+    health_status = {
+        "status": "healthy",
+        "service": "EventAI API",
+        "timestamp": datetime.utcnow().isoformat(),
+        "checks": {}
+    }
+    
+    # Check Anthropic API key
+    health_status["checks"]["anthropic_api"] = {
+        "status": "healthy" if anthropic_api_key else "unhealthy",
+        "configured": bool(anthropic_api_key)
+    }
+    
+    # Check Firestore service
+    try:
+        fs_service.health_check()
+        health_status["checks"]["firestore"] = {"status": "healthy"}
+    except Exception as e:
+        health_status["checks"]["firestore"] = {
+            "status": "unhealthy", 
+            "error": str(e)
+        }
+        health_status["status"] = "degraded"
+    
+    # Check BigQuery service  
+    try:
+        bq_service.health_check()
+        health_status["checks"]["bigquery"] = {"status": "healthy"}
+    except Exception as e:
+        health_status["checks"]["bigquery"] = {
+            "status": "unhealthy",
+            "error": str(e)
+        }
+    
+    return health_status
+
+@app.get("/readiness")
+async def readiness_check():
+    """Readiness probe for Kubernetes/Cloud Run"""
+    try:
+        # Quick check of critical dependencies
+        if not anthropic_api_key:
+            raise HTTPException(status_code=503, detail="Anthropic API key not configured")
+            
+        # Test Firestore connectivity
+        fs_service.health_check()
+        
+        return {"status": "ready", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service not ready: {str(e)}")
+
+@app.get("/startup")
+async def startup_check():
+    """Startup probe to ensure service is fully initialized"""
+    startup_checks = {
+        "anthropic_configured": bool(anthropic_api_key),
+        "firestore_initialized": True,
+        "bigquery_initialized": True,
+        "http_session_ready": bool(http_session)
+    }
+    
+    all_ready = all(startup_checks.values())
+    
+    if all_ready:
+        return {
+            "status": "started",
+            "checks": startup_checks,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    else:
+        raise HTTPException(
+            status_code=503, 
+            detail={
+                "status": "starting",
+                "checks": startup_checks
+            }
+        )
 
 class CalendarEventResponse(BaseModel):
     icsContent: str
@@ -624,11 +737,21 @@ async def api_debug_info():
 
 @api_router.get("/usage", response_model=UsageResponse)
 async def get_usage_stats(request: Request, api_key_info: APIKeyInfo = Depends(require_api_key)):
-    """Get current user usage statistics"""
+    """Get current user usage statistics with API key specific limits"""
     user_id = usage_service.get_user_id(request)
     # Ensure user exists in Firestore
     usage_service.ensure_user_exists(user_id, request)
-    usage_check = usage_service.can_convert(user_id)
+    
+    # Get API key details from validation result for custom limits
+    api_key_data = None
+    if hasattr(api_key_info, 'key_name'):
+        # Extract API key data from the validation result
+        fs_service = get_firestore_service()
+        validation_result = fs_service.validate_api_key(api_key_info.key_id)
+        if validation_result["valid"]:
+            api_key_data = validation_result
+    
+    usage_check = usage_service.can_convert(user_id, api_key_data)
     
     return UsageResponse(
         count=usage_check["count"],
@@ -686,6 +809,210 @@ async def get_subscription_status(request: Request):
     else:
         return SubscriptionResponse(is_premium=False)
 
+@api_router.post("/subscription/sync")
+async def sync_subscription_status(request: Request, api_key_info: APIKeyInfo = Depends(require_api_key)):
+    """Sync subscription status from StoreKit to backend"""
+    user_id = usage_service.get_user_id(request)
+    usage_service.ensure_user_exists(user_id, request)
+    
+    # Parse request body
+    body = await request.json()
+    is_premium = body.get("is_premium", False)
+    product_id = body.get("product_id", "eventai_premium") 
+    source = body.get("source", "unknown")
+    
+    print(f"🔄 Syncing subscription for user {user_id[:8]}... - Premium: {is_premium}, Product: {product_id}, Source: {source}")
+    
+    if is_premium:
+        # Create/update subscription in Firestore
+        subscription_id = fs_service.create_subscription(
+            user_id=user_id,
+            product_id=product_id,
+            device_id=request.headers.get("X-Device-ID"),
+            apple_receipt_data=None,  # StoreKit validation would go here
+            subscription_days=30  # Default 30 day subscription
+        )
+        print(f"✅ Created subscription {subscription_id} for user {user_id[:8]}...")
+    else:
+        # TODO: Implement subscription cancellation/deactivation
+        print(f"🔄 Would deactivate subscription for user {user_id[:8]}...")
+    
+    return {"success": True, "is_premium": is_premium}
+
+@api_router.post("/subscription/sync/enhanced")
+async def sync_subscription_enhanced(request: Request, api_key_info: APIKeyInfo = Depends(require_api_key)):
+    """Enhanced subscription sync using Apple transaction IDs as primary identifier"""
+    user_id = usage_service.get_user_id(request)
+    usage_service.ensure_user_exists(user_id, request)
+    
+    # Parse request body
+    body = await request.json()
+    is_premium = body.get("is_premium", False)
+    product_id = body.get("product_id", "eventai_premium") 
+    source = body.get("source", "storekit")
+    apple_transaction_id = body.get("apple_transaction_id")
+    apple_original_transaction_id = body.get("apple_original_transaction_id")
+    
+    print(f"🔄 Enhanced sync for user {user_id[:8]}... - Premium: {is_premium}, Product: {product_id}")
+    print(f"🍎 Apple transaction ID: {apple_transaction_id}")
+    print(f"🍎 Apple original transaction ID: {apple_original_transaction_id}")
+    
+    if is_premium and apple_transaction_id:
+        try:
+            # Create/update subscription in Firestore with Apple transaction data
+            subscription_id = fs_service.create_subscription(
+                user_id=user_id,
+                product_id=product_id,
+                device_id=request.headers.get("X-Device-ID"),
+                apple_receipt_data=None,  # Could store receipt data for future validation
+                subscription_days=30,  # Default 30 day subscription
+                apple_transaction_id=str(apple_transaction_id),
+                apple_original_transaction_id=str(apple_original_transaction_id) if apple_original_transaction_id else None
+            )
+            print(f"✅ Enhanced sync created subscription {subscription_id} for user {user_id[:8]}...")
+            
+            # Verify the user is now premium by checking usage
+            usage_data = usage_service.get_user_usage(user_id)
+            print(f"📊 Post-sync usage check: Premium={usage_data.get('is_premium', False)}, Limit={usage_data.get('limit', 0)}")
+            
+            return {
+                "success": True, 
+                "is_premium": True,
+                "subscription_id": subscription_id,
+                "verified_premium": usage_data.get("is_premium", False),
+                "daily_limit": usage_data.get("limit", 0)
+            }
+            
+        except Exception as e:
+            print(f"❌ Enhanced sync failed: {e}")
+            return {"success": False, "error": str(e), "is_premium": False}
+    
+    elif not is_premium:
+        # Handle subscription deactivation
+        print(f"🔄 Deactivating subscription for user {user_id[:8]}...")
+        # TODO: Implement subscription deactivation
+        return {"success": True, "is_premium": False}
+    
+    else:
+        print(f"⚠️ Enhanced sync missing Apple transaction ID for premium user {user_id[:8]}...")
+        return {"success": False, "error": "Apple transaction ID required for premium sync", "is_premium": False}
+
+@api_router.post("/subscription/deactivate")
+async def deactivate_subscription(request: Request, api_key_info: APIKeyInfo = Depends(require_api_key)):
+    """Deactivate subscription for testing purposes"""
+    user_id = usage_service.get_user_id(request)
+    device_id = request.headers.get("X-Device-ID")
+    
+    # Parse request body for specific subscription details
+    try:
+        body = await request.json()
+        apple_transaction_id = body.get("apple_transaction_id")
+        apple_original_transaction_id = body.get("apple_original_transaction_id")
+    except:
+        apple_transaction_id = None
+        apple_original_transaction_id = None
+    
+    print(f"🔄 Deactivating subscription for user {user_id[:8]}... (Device: {device_id[:8]}...)")
+    if apple_transaction_id:
+        print(f"🍎 Apple Transaction ID: {apple_transaction_id}")
+    
+    try:
+        # Deactivate subscription in Firestore
+        deactivated_count = fs_service.deactivate_user_subscriptions(user_id)
+        print(f"✅ Deactivated {deactivated_count} subscriptions for user {user_id[:8]}...")
+        
+        # Verify deactivation worked
+        usage_data = usage_service.get_user_usage(user_id)
+        print(f"📊 Post-deactivation check: Premium={usage_data.get('is_premium', False)}, Limit={usage_data.get('limit', 0)}")
+        
+        return {
+            "success": True,
+            "deactivated_count": deactivated_count,
+            "is_premium": usage_data.get("is_premium", False),
+            "daily_limit": usage_data.get("limit", 0)
+        }
+        
+    except Exception as e:
+        print(f"❌ Deactivation failed: {e}")
+        return {"success": False, "error": str(e)}
+
+@api_router.post("/webhooks/apple/notifications")
+async def handle_apple_server_notifications(request: Request):
+    """Handle App Store Server Notifications from Apple"""
+    try:
+        # Parse the Apple notification
+        body = await request.json()
+        
+        # Apple sends notifications in a specific format
+        notification_type = body.get("notificationType")
+        subtype = body.get("subtype")
+        data = body.get("data", {})
+        
+        print(f"🍎 Received Apple notification: {notification_type} ({subtype})")
+        print(f"📄 Notification data: {json.dumps(data, indent=2)}")
+        
+        # Handle different notification types
+        if notification_type in ["SUBSCRIBED", "DID_RENEW"]:
+            # User subscribed or renewed
+            await handle_subscription_activated(data)
+        elif notification_type in ["DID_CANCEL", "EXPIRED"]:
+            # User cancelled or subscription expired
+            await handle_subscription_deactivated(data)
+        elif notification_type == "GRACE_PERIOD_EXPIRED":
+            # Grace period ended, deactivate
+            await handle_subscription_deactivated(data)
+        elif notification_type == "OFFER_REDEEMED":
+            # User redeemed promotional offer
+            await handle_subscription_activated(data)
+        else:
+            print(f"⚠️ Unhandled Apple notification type: {notification_type}")
+        
+        return {"status": "received"}
+        
+    except Exception as e:
+        print(f"❌ Error processing Apple notification: {e}")
+        return {"status": "error", "message": str(e)}
+
+async def handle_subscription_activated(data: dict):
+    """Handle subscription activation from Apple notification"""
+    try:
+        # Extract transaction info from Apple's notification
+        # This would need to be adapted based on Apple's actual notification format
+        transaction_info = data.get("transactionInfo", {})
+        original_transaction_id = transaction_info.get("originalTransactionId")
+        product_id = transaction_info.get("productId", "eventai_premium")
+        
+        if original_transaction_id:
+            # Find user by Apple transaction ID and activate subscription
+            # For now, we'll need to enhance our user identification
+            print(f"✅ Activating subscription for transaction {original_transaction_id}")
+            
+            # TODO: Implement proper user lookup by Apple transaction ID
+            # This requires storing original transaction IDs when users first purchase
+            
+        else:
+            print("⚠️ No original transaction ID in Apple notification")
+            
+    except Exception as e:
+        print(f"❌ Error activating subscription: {e}")
+
+async def handle_subscription_deactivated(data: dict):
+    """Handle subscription deactivation from Apple notification"""
+    try:
+        transaction_info = data.get("transactionInfo", {})
+        original_transaction_id = transaction_info.get("originalTransactionId")
+        
+        if original_transaction_id:
+            print(f"❌ Deactivating subscription for transaction {original_transaction_id}")
+            
+            # TODO: Implement proper subscription deactivation by Apple transaction ID
+            
+        else:
+            print("⚠️ No original transaction ID in Apple notification")
+            
+    except Exception as e:
+        print(f"❌ Error deactivating subscription: {e}")
+
 @api_router.post("/convert", response_model=CalendarEventResponse)
 async def convert_to_calendar(
     request: Request,
@@ -704,8 +1031,13 @@ async def convert_to_calendar(
     # Ensure user exists in Firestore
     usage_service.ensure_user_exists(user_id, request)
     
+    # Get API key details for custom limits
+    fs_service = get_firestore_service()
+    validation_result = fs_service.validate_api_key(api_key_info.key_id)
+    api_key_data = validation_result if validation_result["valid"] else None
+    
     # Check usage limits before processing
-    usage_check = usage_service.can_convert(user_id)
+    usage_check = usage_service.can_convert(user_id, api_key_data)
     
     if not usage_check["allowed"]:
         return CalendarEventResponse(
@@ -923,7 +1255,33 @@ async def process_calendar_request(text: str, timezone: str, userLocation: Optio
         }
         
         print("🤖 Making request to Anthropic API...")
-        response = requests.post(anthropic_api_url, headers=headers, json=payload, timeout=30)
+        
+        # Implement retry logic with exponential backoff for better reliability
+        max_retries = 3
+        base_delay = 1
+        
+        for attempt in range(max_retries):
+            try:
+                response = http_session.post(anthropic_api_url, headers=headers, json=payload, timeout=45)
+                break
+            except requests.exceptions.Timeout as e:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"⏰ API request timeout (attempt {attempt + 1}/{max_retries}), retrying in {delay}s...")
+                    time.sleep(delay)
+                    continue
+                else:
+                    print(f"❌ API request failed after {max_retries} attempts")
+                    raise HTTPException(status_code=504, detail="AI service timeout after multiple retries")
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"❌ API request error (attempt {attempt + 1}/{max_retries}): {e}, retrying in {delay}s...")
+                    time.sleep(delay)
+                    continue
+                else:
+                    raise
+        
         print(f"🤖 Anthropic API response status: {response.status_code}")
         
         if response.status_code != 200:

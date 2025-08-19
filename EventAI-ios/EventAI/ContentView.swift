@@ -1,12 +1,13 @@
 import SwiftUI
 import EventKit
 import CoreLocation
+import UIKit
 
-// Use RevenueCat instead of StoreKit for subscriptions
-typealias SubscriptionService = SubscriptionService_RevenueCat
+// Use native Apple StoreKit for subscriptions (simpler and more reliable)
+typealias SubscriptionService = SubscriptionService_StoreKit
 
 // MARK: - Simple Error Types
-enum SimpleAppError {
+enum SimpleAppError: Equatable {
     case networkTimeout
     case serverUnavailable
     case apiQuotaExceeded
@@ -43,6 +44,11 @@ class SimpleErrorManager: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
             self.dismiss()
         }
+    }
+    
+    func showAsAlert(_ error: SimpleAppError, alertMessage: Binding<String>, showAlert: Binding<Bool>) {
+        alertMessage.wrappedValue = error.message
+        showAlert.wrappedValue = true
     }
     
     func dismiss() {
@@ -89,7 +95,6 @@ struct ContentView: View {
     @State private var premiumDailyLimit = 0  // Will be set by backend API
     @State private var canConvert = true
     @State private var isLoadingUsage = false
-    @State private var debugApiStatus = "Initial"
     @State private var selectedImage: UIImage?
     @State private var showingImagePicker = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
@@ -117,17 +122,8 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Usage indicator for free users (always show with skeleton loader)
-                if !subscriptionService.isPremium {
-                    UsageIndicatorView(subscriptionService: subscriptionService, showingPremiumModal: $showingPremiumModal, dailyConversionsUsed: dailyConversionsUsed, dailyLimit: dailyLimit, isLoading: isLoadingUsage)
-                }
-                
-                // TEMPORARY DEBUG: Usage API tracking
-                Text("DEBUG: Status=\(debugApiStatus), isLoading=\(isLoadingUsage), limit=\(dailyLimit), used=\(dailyConversionsUsed)")
-                    .font(.caption2)
-                    .foregroundColor(.red)
-                    .padding(.horizontal)
-                    .background(Color.yellow.opacity(0.3))
+                // Usage indicator for all users (always show with skeleton loader)
+                UsageIndicatorView(subscriptionService: subscriptionService, showingPremiumModal: $showingPremiumModal, dailyConversionsUsed: dailyConversionsUsed, dailyLimit: dailyLimit, isLoading: isLoadingUsage)
                 
                 inputSection
                 
@@ -159,7 +155,7 @@ struct ContentView: View {
                     }
                     
                     Button("Terms of Use") {
-                        if let url = URL(string: "https://leveluplife.app/eventai/terms") {
+                        if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
                             UIApplication.shared.open(url)
                         }
                     }
@@ -230,6 +226,7 @@ struct ContentView: View {
                         }
                     },
                     onShowPremiumModal: {
+                        print("🔘 onShowPremiumModal called - setting showingPremiumModal = true")
                         showingPremiumModal = true
                     }
                 )
@@ -297,9 +294,10 @@ struct ContentView: View {
                                         .foregroundColor(.primary)
                                         .multilineTextAlignment(.center)
                                     
-                                    Image(systemName: "calendar.badge.plus")
-                                        .font(.system(size: 80))
-                                        .foregroundColor(.blue)
+                                    Image("subscription_image")
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 120, height: 120)
                                 }
                                 
                                 VStack(spacing: 8) {
@@ -310,11 +308,11 @@ struct ContentView: View {
                                         .lineLimit(4)
                                         .fixedSize(horizontal: false, vertical: true)
                                     
-                                    // Show remaining conversions if user is on free tier
-                                    if !subscriptionService.isPremium && dailyLimit > 0 {
+                                    // Show remaining conversions for all users (free and premium have daily limits)
+                                    if dailyLimit > 0 {
                                         Text(remainingConversionsText)
                                             .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(subscriptionService.isPremium ? .green : .blue)
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 4)
                                             .background(Color.blue.opacity(0.1))
@@ -335,14 +333,6 @@ struct ContentView: View {
                                         Image(systemName: "checkmark.circle.fill")
                                             .font(.system(size: 16))
                                             .foregroundColor(.green)
-                                        Text("Photo Support")
-                                            .font(.system(size: 16))
-                                            .foregroundColor(.primary)
-                                    }
-                                    HStack(spacing: 12) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.system(size: 16))
-                                            .foregroundColor(.green)
                                         Text("Ad-free Experience")
                                             .font(.system(size: 16))
                                             .foregroundColor(.primary)
@@ -355,6 +345,7 @@ struct ContentView: View {
                             
                             VStack(spacing: 16) {
                                 Button(action: {
+                                    print("🔘 Premium button pressed - starting purchase flow")
                                     Task {
                                         await subscriptionService.purchaseSubscription()
                                         if subscriptionService.isPremium {
@@ -396,6 +387,9 @@ struct ContentView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .onChange(of: showingPremiumModal) { oldValue, newValue in
+            print("🔴 showingPremiumModal changed from \(oldValue) to \(newValue)")
+        }
         .onAppear {
             print("🔄 DEBUG: ContentView onAppear triggered")
             // Prioritize usage loading first - UI depends on it
@@ -419,6 +413,11 @@ struct ContentView: View {
         .onChange(of: scenePhase) { phase in
             if phase == .active {
                 Task {
+                    // Force sync subscription status when app becomes active
+                    if subscriptionService.isPremium {
+                        print("🔄 App became active - forcing subscription sync for premium user")
+                        await subscriptionService.forceBackendSync()
+                    }
                     await loadUsageFromBackend()
                 }
             }
@@ -670,12 +669,10 @@ struct ContentView: View {
     @MainActor
     private func loadUsageFromBackend() async {
         print("🔄 DEBUG: Starting loadUsageFromBackend()")
-        debugApiStatus = "Starting"
         
         // Prevent duplicate concurrent calls
         guard !isLoadingUsage else {
             print("🔄 DEBUG: Already loading usage, skipping")
-            debugApiStatus = "Already loading"
             return
         }
         
@@ -689,10 +686,8 @@ struct ContentView: View {
         
         do {
             print("🔄 DEBUG: Calling apiService.getUsageStats()...")
-            debugApiStatus = "Calling API"
             let usageResponse = try await apiService.getUsageStats()
             print("🔄 DEBUG: Usage API response: count=\(usageResponse.count), limit=\(usageResponse.limit)")
-            debugApiStatus = "API Success"
             dailyConversionsUsed = usageResponse.count
             dailyLimit = usageResponse.limit
             canConvert = usageResponse.canConvert
@@ -711,11 +706,17 @@ struct ContentView: View {
             let action = hasExistingData ? "refreshed" : "loaded"
         } catch {
             print("❌ [ContentView] Failed to load usage: \(error)")
-            debugApiStatus = "API Error: \(error.localizedDescription)"
             
             // Only show error UI for initial load (when user is waiting)
             if !hasExistingData {
-                errorManager.show(SimpleErrorManager.convertError(error))
+                let convertedError = SimpleErrorManager.convertError(error)
+                
+                // Show server unavailable errors as alerts, others as banners
+                if convertedError == .serverUnavailable {
+                    errorManager.showAsAlert(convertedError, alertMessage: $alertMessage, showAlert: $showAlert)
+                } else {
+                    errorManager.show(convertedError)
+                }
             }
             
             // Set defaults for first-time load failures
@@ -821,11 +822,12 @@ struct ContentView: View {
                         currentICSContent = response.icsContent
                         showEventPreview = true
                         
+                        // Update usage counter immediately for instant UI feedback
+                        dailyConversionsUsed += 1
+                        
                         // Refresh usage stats after successful conversion (without skeleton loader)
-                        if !subscriptionService.isPremium {
-                            Task {
-                                await refreshUsageFromBackend()
-                            }
+                        Task {
+                            await refreshUsageFromBackend()
                         }
                     } else {
                         // Only show error alerts for actual API/technical errors, not "no events found" 
@@ -841,7 +843,14 @@ struct ContentView: View {
         } catch {
             await MainActor.run {
                 isLoading = false
-                errorManager.show(SimpleErrorManager.convertError(error))
+                let convertedError = SimpleErrorManager.convertError(error)
+                
+                // Show server unavailable errors as alerts, others as banners
+                if convertedError == .serverUnavailable {
+                    errorManager.showAsAlert(convertedError, alertMessage: $alertMessage, showAlert: $showAlert)
+                } else {
+                    errorManager.show(convertedError)
+                }
             }
         }
     }
@@ -905,11 +914,14 @@ struct ContentView: View {
             )
             
             if response.eventsFound > 0 && response.events != nil && !response.events!.isEmpty {
+                // Update usage counter immediately for instant UI feedback
+                await MainActor.run {
+                    dailyConversionsUsed += 1
+                }
+                
                 // Refresh usage stats after successful conversion (without skeleton loader)
-                if !subscriptionService.isPremium {
-                    Task {
-                        await refreshUsageFromBackend()
-                    }
+                Task {
+                    await refreshUsageFromBackend()
                 }
                 return (events: response.events, icsContent: response.icsContent, error: nil)
             } else {
@@ -1101,6 +1113,7 @@ struct EventPreviewView: View {
                                 
                                 if shouldShowBanner || isLastEventAndNoBannerYet {
                                     BannerAdView {
+                                        print("🔘 BannerAdView tapped - calling onShowPremiumModal")
                                         onShowPremiumModal()
                                     }
                                     .frame(height: 60)
@@ -1843,6 +1856,7 @@ struct EventCard: View {
             }
         }
     }
+    
 }
 
 // MARK: - Calendar Picker View
@@ -1923,6 +1937,7 @@ extension Color {
         return colors.randomElement() ?? .blue
     }
 }
+
 
 // MARK: - Image Picker
 struct ImagePicker: UIViewControllerRepresentable {
@@ -2045,13 +2060,18 @@ struct UsageIndicatorView: View {
             
             Spacer()
             
-            Button("Upgrade") {
-                showingPremiumModal = true
+            // Only show upgrade button for non-premium users
+            if !subscriptionService.isPremium {
+                Button("Upgrade") {
+                    print("🔴 USAGE INDICATOR UPGRADE BUTTON TAPPED!")
+                    showingPremiumModal = true
+                    print("🔴 Set showingPremiumModal = true")
+                }
+                .font(.caption)
+                .foregroundColor(.blue)
+                .opacity(isLoading ? 0.6 : 1.0)
+                .disabled(isLoading)
             }
-            .font(.caption)
-            .foregroundColor(.blue)
-            .opacity(isLoading ? 0.6 : 1.0)
-            .disabled(isLoading)
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
@@ -2072,7 +2092,10 @@ struct BannerAdView: View {
     let onTap: () -> Void
     
     var body: some View {
-        Button(action: onTap) {
+        Button(action: {
+            print("🔴 BANNER BUTTON TAPPED! About to call onTap")
+            onTap()
+        }) {
             VStack(spacing: 8) {
                 HStack {
                     Image(systemName: "crown.fill")
@@ -2083,9 +2106,9 @@ struct BannerAdView: View {
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
-                    
-                    Spacer()
                 }
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
                 
                 Text("Get more daily conversions")
                     .font(.caption2)
@@ -2500,6 +2523,7 @@ func parseDayNamesFromByDay(_ byDay: String) -> [String] {
 struct SubscriptionInfoViewContent: View {
     @Environment(\.openURL) private var openURL
     @StateObject private var subscriptionService = SubscriptionService()
+    @StateObject private var apiService = APIService()
     
     var body: some View {
         ScrollView {
@@ -2563,7 +2587,10 @@ struct SubscriptionInfoViewContent: View {
                         if subscriptionService.isPremium {
                             // Premium user - show Manage Subscription button
                             Button(action: {
-                                subscriptionService.showCustomerCenter()
+                                // Directly open iOS Settings
+                                if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(settingsUrl)
+                                }
                             }) {
                                 HStack {
                                     Image(systemName: "person.crop.circle.badge.checkmark")
@@ -2612,23 +2639,6 @@ struct SubscriptionInfoViewContent: View {
                                     .cornerRadius(8)
                                 }
                             }
-                        }
-                        
-                        // Always show refresh subscription button for cross-device sync
-                        Button(action: {
-                            Task {
-                                await subscriptionService.checkSubscriptionStatus()
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                                Text("Refresh Subscription Status")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
-                            .cornerRadius(8)
                         }
                     }
                     .font(.callout)
@@ -2684,7 +2694,7 @@ struct SubscriptionInfoViewContent: View {
                         
                         // Terms of Use Link
                         Button(action: {
-                            if let url = URL(string: "https://leveluplife.app/eventai/terms") {
+                            if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
                                 openURL(url)
                             }
                         }) {

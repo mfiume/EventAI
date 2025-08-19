@@ -165,7 +165,8 @@ class FirestoreService:
         return False
     
     def create_subscription(self, user_id: str, product_id: str, device_id: str = None,
-                           apple_receipt_data: str = None, subscription_days: int = 30) -> str:
+                           apple_receipt_data: str = None, subscription_days: int = 30,
+                           apple_transaction_id: str = None, apple_original_transaction_id: str = None) -> str:
         """Create new premium subscription"""
         subscription_id = str(uuid.uuid4())
         subscription_start = datetime.now(timezone.utc)
@@ -177,6 +178,8 @@ class FirestoreService:
             "product_id": product_id,
             "device_id": device_id,
             "apple_receipt_data": apple_receipt_data,
+            "apple_transaction_id": apple_transaction_id,
+            "apple_original_transaction_id": apple_original_transaction_id,
             "is_active": True,
             "subscription_start": subscription_start,
             "subscription_end": subscription_end,
@@ -370,12 +373,50 @@ class FirestoreService:
                 "key_id": api_key,
                 "key_name": key_data.get("key_name", "Unknown"),
                 "permissions": key_data.get("permissions", ["usage", "convert"]),
-                "rate_limit": key_data.get("rate_limit", 1000)
+                "rate_limit": key_data.get("rate_limit", 1000),
+                "free_daily_limit": key_data.get("free_daily_limit"),  # Custom free daily limit
+                "premium_daily_limit": key_data.get("premium_daily_limit"),  # Custom premium daily limit
+                "environment": key_data.get("environment", "production")
             }
             
         except Exception as e:
             print(f"❌ API key validation error: {e}")
             return {"valid": False, "error": "Validation service error"}
+    
+    def create_development_api_key(self, key_name: str, free_limit: int = 100, premium_limit: int = 200) -> str:
+        """Create a development API key with custom daily limits"""
+        import secrets
+        
+        # Generate secure API key
+        key_suffix = secrets.token_hex(32)  # 64 character hex string
+        api_key = f"eak_{key_suffix}"
+        
+        key_data = {
+            "key_id": api_key,
+            "key_name": key_name,
+            "environment": "development",
+            "permissions": ["usage", "convert", "subscription", "admin"],
+            "rate_limit": 10000,  # Higher rate limit for development
+            "free_daily_limit": free_limit,  # Custom free daily limit
+            "premium_daily_limit": premium_limit,  # Custom premium daily limit
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc),
+            "expires_at": None,  # No expiration for dev keys
+            "last_used": None,
+            "usage_count": 0,
+            "created_by": "development_system"
+        }
+        
+        # Store in Firestore
+        key_ref = self.client.collection(self.api_keys_collection).document(api_key)
+        key_ref.set(key_data)
+        
+        print(f"🔑 Created development API key: {key_name}")
+        print(f"   Key: {api_key}")
+        print(f"   Free daily limit: {free_limit}")
+        print(f"   Premium daily limit: {premium_limit}")
+        
+        return api_key
     
     def create_api_key(self, key_name: str, permissions: List[str] = None, 
                       rate_limit: int = 1000, expires_days: int = None) -> str:
