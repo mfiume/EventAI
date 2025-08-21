@@ -88,12 +88,16 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
     
     func restorePurchases() async {
         print("🔄 Restoring purchases via RevenueCat...")
+        print("📱 Current user anonymous ID: \(Purchases.shared.appUserID)")
         
         isLoading = true
         purchaseError = nil
         
         do {
+            print("🔄 Calling RevenueCat restorePurchases()...")
             let customerInfo = try await Purchases.shared.restorePurchases()
+            print("✅ RevenueCat restore call completed")
+            print("📊 Active entitlements: \(customerInfo.entitlements.active.keys)")
             await updateSubscriptionStatus(from: customerInfo)
             
             if isPremium {
@@ -105,7 +109,25 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
             
         } catch {
             print("❌ Failed to restore purchases: \(error)")
-            purchaseError = "Failed to restore purchases: \(error.localizedDescription)"
+            print("🔍 Restore error details: \(error.localizedDescription)")
+            
+            // Handle specific RevenueCat/StoreKit errors
+            let errorDescription = error.localizedDescription.lowercased()
+            if errorDescription.contains("cancelled") || errorDescription.contains("canceled") {
+                purchaseError = "Restore was cancelled. Please try again and complete Apple ID authentication when prompted."
+            } else if let revenueCatError = error as? ErrorCode {
+                print("   RevenueCat error code: \(revenueCatError)")
+                switch revenueCatError {
+                case .purchaseCancelledError:
+                    purchaseError = "Restore was cancelled. Please try again and complete Apple ID authentication when prompted."
+                default:
+                    purchaseError = "Failed to restore purchases: \(error.localizedDescription)"
+                }
+            } else {
+                purchaseError = "Failed to restore purchases: \(error.localizedDescription)"
+            }
+            
+            print("🏁 Restore purchases completed - isPremium: \(isPremium)")
         }
         
         isLoading = false
