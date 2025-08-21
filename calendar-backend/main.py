@@ -662,9 +662,19 @@ def create_calendar_from_events(events_data: list, timezone_str: str = "UTC") ->
         else:
             end_date = start_date + timedelta(hours=1)
         
-        # Use proper timezone formatting for iOS compatibility
-        event.add('dtstart', start_date)
-        event.add('dtend', end_date)
+        # Handle all-day events with proper ICS formatting
+        is_all_day = event_data.get('is_all_day', False)
+        if is_all_day:
+            # For all-day events, use DATE format instead of DATETIME
+            # Convert to date objects and use VALUE=DATE parameter
+            start_date_obj = start_date.date()
+            end_date_obj = end_date.date()
+            event.add('dtstart', start_date_obj, parameters={'VALUE': 'DATE'})
+            event.add('dtend', end_date_obj, parameters={'VALUE': 'DATE'})
+        else:
+            # Use proper timezone formatting for timed events
+            event.add('dtstart', start_date)
+            event.add('dtend', end_date)
         
         # Add required fields for iOS compatibility
         now_utc = datetime.utcnow().replace(tzinfo=pytz.UTC)
@@ -1107,6 +1117,11 @@ async def process_calendar_request(text: str, timezone: str, userLocation: Optio
                 effective_timezone = inferred_timezone
                 print(f"📍 Inferred timezone '{effective_timezone}' from location '{userLocation}'")
         
+        # Calculate current date in user's timezone for accurate date references
+        user_tz = pytz.timezone(effective_timezone)
+        current_date_user_tz = datetime.now(user_tz)
+        today_formatted = current_date_user_tz.strftime('%A, %B %d, %Y')
+        
         # Prompt for Claude to extract calendar events
         location_context = f"\n\nUser's current location: {userLocation}" if userLocation else ""
         
@@ -1128,6 +1143,7 @@ async def process_calendar_request(text: str, timezone: str, userLocation: Optio
         - start_date (string): ISO format datetime (YYYY-MM-DDTHH:MM:SS) - REQUIRED for ICS
         - end_date (string): ISO format datetime (YYYY-MM-DDTHH:MM:SS) - if not specified, set to 1 hour after start
         - is_recurring (boolean): true for recurring events, false for one-time events
+        - is_all_day (boolean): true for all-day events (birthdays, holidays, etc.), false for timed events
         
         OPTIONAL FIELDS:
         - description (string): Additional details about the event
@@ -1136,11 +1152,24 @@ async def process_calendar_request(text: str, timezone: str, userLocation: Optio
         - recurrence_pattern (string): If recurring, describe pattern clearly (e.g., "FREQ=WEEKLY;BYDAY=MO", "daily", "weekly on Fridays", "monthly on 15th", "yearly on birthday")
         
         PARSING RULES:
-        1. Date/Time: Calculate from today ({datetime.now().strftime('%A, %B %d, %Y')})
+        1. All-Day Event Detection: Identify events that should span the entire day
+           - BIRTHDAYS: "birthday", "my birthday", "John's birthday", "birthday party" → all-day event
+           - HOLIDAYS: "Christmas", "New Year's Day", "Independence Day", "Thanksgiving", "Easter" → all-day event
+           - ANNIVERSARIES: "anniversary", "wedding anniversary", "work anniversary" → all-day event
+           - SPECIAL DAYS: "vacation day", "day off", "holiday", "sick day", "personal day" → all-day event
+           - MULTI-DAY EVENTS: "vacation", "conference", "trip", "retreat" → all-day event
+           - CELEBRATIONS: "celebration", "festival", "parade" → all-day event (unless specific time mentioned)
+           
+           For all-day events:
+           - Set start_date to the date at 00:00:00 (midnight)
+           - Set end_date to the NEXT day at 00:00:00 (so it spans the full day)
+           - Add "is_all_day": true to the event JSON
+           
+        2. Date/Time: Calculate from today ({today_formatted} in {effective_timezone})
            - For month/day formats like "September 6", determine the correct year:
              - If the date has already passed this year, use next year
              - If the date hasn't occurred yet this year, use this year
-           - Default times: morning=9AM, afternoon=2PM, evening=7PM
+           - Default times (ONLY for non-all-day events): morning=9AM, afternoon=2PM, evening=7PM
            - "tomorrow" = next day
            - "next Monday" = next occurrence of Monday
            - "in 2 weeks" = 14 days from now
@@ -1177,7 +1206,17 @@ async def process_calendar_request(text: str, timezone: str, userLocation: Optio
             "location": "Conference Room A",
             "description": "Weekly team standup meeting",
             "is_recurring": true,
+            "is_all_day": false,
             "recurrence_pattern": "weekly on Fridays",
+            "timezone": "America/New_York"
+          }},
+          {{
+            "title": "Birthday",
+            "start_date": "2025-08-22T00:00:00",
+            "end_date": "2025-08-23T00:00:00",
+            "description": "Birthday celebration",
+            "is_recurring": false,
+            "is_all_day": true,
             "timezone": "America/New_York"
           }}
         ]
@@ -1346,6 +1385,7 @@ async def process_calendar_request(text: str, timezone: str, userLocation: Optio
                             'end_date': end_date,
                             'location': event.get('location', None),
                             'is_recurring': event.get('is_recurring', False),
+                            'is_all_day': event.get('is_all_day', False),
                             'recurrence_pattern': event.get('recurrence_pattern', None),
                             'timezone': effective_timezone  # Always use effective timezone
                         }

@@ -1388,8 +1388,10 @@ struct EventCard: View {
                                 
                                 // Duration indicator
                                 if let endDate = event.formattedEndDate {
-                                    let duration = Calendar.current.dateComponents([.hour, .minute], from: startDate, to: endDate)
-                                    let durationText = formatDuration(hours: duration.hour ?? 0, minutes: duration.minute ?? 0)
+                                    let durationText = isAllDayEvent(start: startDate, end: endDate) ? "All Day" : {
+                                        let duration = Calendar.current.dateComponents([.hour, .minute], from: startDate, to: endDate)
+                                        return formatDuration(hours: duration.hour ?? 0, minutes: duration.minute ?? 0)
+                                    }()
                                     Text(durationText)
                                         .font(.caption2)
                                         .foregroundColor(.blue)
@@ -1779,7 +1781,39 @@ struct EventCard: View {
         }
     }
     
+    private func isAllDayEvent(start: Date, end: Date?) -> Bool {
+        guard let end = end else { return false }
+        
+        let calendar = Calendar.current
+        let startComponents = calendar.dateComponents([.hour, .minute, .second], from: start)
+        let endComponents = calendar.dateComponents([.hour, .minute, .second], from: end)
+        
+        // Check if start is at midnight (00:00:00)
+        let isStartMidnight = startComponents.hour == 0 && startComponents.minute == 0 && startComponents.second == 0
+        
+        // Check if end is at midnight (00:00:00) and is the next day
+        let isEndMidnight = endComponents.hour == 0 && endComponents.minute == 0 && endComponents.second == 0
+        let isNextDay = calendar.dateComponents([.day], from: start, to: end).day == 1
+        
+        return isStartMidnight && isEndMidnight && isNextDay
+    }
+    
     private func formatRecurringEventTime(start: Date, end: Date?, isRecurring: Bool) -> String {
+        // Check if this is an all-day event
+        if isAllDayEvent(start: start, end: end) {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            dateFormatter.timeStyle = .none
+            
+            let dateString = dateFormatter.string(from: start)
+            
+            if isRecurring {
+                return "Starts \(dateString)\nAll Day"
+            } else {
+                return "\(dateString)\nAll Day"
+            }
+        }
+        
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .none
