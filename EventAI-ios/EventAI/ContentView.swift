@@ -32,31 +32,8 @@ enum SimpleAppError: Equatable {
 
 // Simple error state manager
 @MainActor
-class SimpleErrorManager: ObservableObject {
-    @Published var currentError: SimpleAppError?
-    @Published var showError = false
-    
-    func show(_ error: SimpleAppError) {
-        currentError = error
-        showError = true
-        
-        // Auto-dismiss after 4 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-            self.dismiss()
-        }
-    }
-    
-    func showAsAlert(_ error: SimpleAppError, alertMessage: Binding<String>, showAlert: Binding<Bool>) {
-        alertMessage.wrappedValue = error.message
-        showAlert.wrappedValue = true
-    }
-    
-    func dismiss() {
-        showError = false
-        currentError = nil
-    }
-    
-    static func convertError(_ error: Error) -> SimpleAppError {
+// MARK: - Error Conversion Helper
+func convertError(_ error: Error) -> SimpleAppError {
         if let apiError = error as? APIError {
             switch apiError {
             case .timeout:
@@ -76,14 +53,12 @@ class SimpleErrorManager: ObservableObject {
             return .unknown
         }
     }
-}
 
 struct ContentView: View {
     @State private var inputText = ""
     @State private var isLoading = false
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @StateObject private var errorManager = SimpleErrorManager()
     @State private var showAdBanner = true
     @State private var selectedTimezone = TimeZone.current
     @State private var useLocationForTimezone = false // TEMPORARILY DISABLED for AI address testing
@@ -174,34 +149,6 @@ struct ContentView: View {
             .onTapGesture {
                 // Remove focus and dismiss keyboard when tapping outside text field
                 isTextFieldFocused = false
-            }
-            .overlay(alignment: .top) {
-                if errorManager.showError, let error = errorManager.currentError {
-                    VStack {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                            Text(error.message)
-                                .font(.subheadline)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Button("✕") {
-                                errorManager.dismiss()
-                            }
-                            .foregroundColor(.secondary)
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .shadow(radius: 4)
-                        .padding(.horizontal)
-                        
-                        Spacer()
-                    }
-                    .zIndex(1000)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .animation(.spring(), value: errorManager.showError)
-                }
             }
             .alert("EventAI", isPresented: $showAlert) {
                 Button("OK") { }
@@ -700,7 +647,7 @@ struct ContentView: View {
             } else {
                 // For free users, premium limit should be higher than their current limit
                 // We can infer this from the API structure or use a reasonable premium amount
-                premiumDailyLimit = usageResponse.limit < 100 ? 20 : 200 // Handle testing vs production
+                premiumDailyLimit = usageResponse.limit // Use actual backend limit
             }
             
             let action = hasExistingData ? "refreshed" : "loaded"
@@ -709,14 +656,11 @@ struct ContentView: View {
             
             // Only show error UI for initial load (when user is waiting)
             if !hasExistingData {
-                let convertedError = SimpleErrorManager.convertError(error)
+                let convertedError = convertError(error)
                 
-                // Show server unavailable errors as alerts, others as banners
-                if convertedError == .serverUnavailable {
-                    errorManager.showAsAlert(convertedError, alertMessage: $alertMessage, showAlert: $showAlert)
-                } else {
-                    errorManager.show(convertedError)
-                }
+                // Show all errors as standard iOS alerts
+                alertMessage = convertedError.message
+                showAlert = true
             }
             
             // Set defaults for first-time load failures
@@ -843,14 +787,11 @@ struct ContentView: View {
         } catch {
             await MainActor.run {
                 isLoading = false
-                let convertedError = SimpleErrorManager.convertError(error)
+                let convertedError = convertError(error)
                 
-                // Show server unavailable errors as alerts, others as banners
-                if convertedError == .serverUnavailable {
-                    errorManager.showAsAlert(convertedError, alertMessage: $alertMessage, showAlert: $showAlert)
-                } else {
-                    errorManager.show(convertedError)
-                }
+                // Show all errors as standard iOS alerts
+                alertMessage = convertedError.message
+                showAlert = true
             }
         }
     }

@@ -86,29 +86,52 @@ def setup_initial_api_keys():
     """Setup initial API keys in Firestore for immediate testing"""
     fs_service = get_firestore_service()
     
-    # Add the current iOS API key that we know works
-    ios_key = "eak_c47d0bde9529f7f254df4a68668c0f74402c89d7daf9c5ae4ed92b9296142b2a"
+    # Add current production API keys
+    production_keys = [
+        {
+            "key": "eak_c555ff05f21b61da0cec024f46ba61a0e7da04ca62f2b2d512ee2b15986e5aa8",
+            "name": "iOS Production Key",
+            "permissions": ["usage", "convert", "subscription"]
+        },
+        {
+            "key": "eak_35c5ffb18435f5668fc93b684f515eb9deca6bafafdd15a8579c182c85bff5cc",
+            "name": "Web Production Key", 
+            "permissions": ["usage", "convert", "subscription"]
+        },
+        {
+            "key": "eak_bf8b7a059ab93f3156960babcd922c0cc8a9ab834948b4a800353c9d2242795c",
+            "name": "Dev Production Key",
+            "permissions": ["usage", "convert", "subscription", "admin"]
+        },
+        {
+            "key": "eak_c47d0bde9529f7f254df4a68668c0f74402c89d7daf9c5ae4ed92b9296142b2a",
+            "name": "Legacy iOS Key",
+            "permissions": ["usage", "convert", "subscription"]
+        }
+    ]
     
     try:
-        # Check if key already exists
-        key_ref = fs_service.client.collection("api_keys").document(ios_key)
-        if not key_ref.get().exists:
-            # Create the iOS key
-            key_data = {
-                "key_id": ios_key,
-                "key_name": "iOS Production Key",
-                "permissions": ["usage", "convert", "subscription"],
-                "rate_limit": 1000,
-                "is_active": True,
-                "created_at": datetime.now(timezone.utc),
-                "expires_at": None,
-                "last_used": None,
-                "usage_count": 0
-            }
-            key_ref.set(key_data)
-            print(f"🔑 Added iOS API key to Firestore: {ios_key[:12]}...")
-        else:
-            print(f"🔑 iOS API key already exists in Firestore")
+        for key_info in production_keys:
+            api_key = key_info["key"]
+            # Check if key already exists
+            key_ref = fs_service.client.collection("api_keys").document(api_key)
+            if not key_ref.get().exists:
+                # Create the API key
+                key_data = {
+                    "key_id": api_key,
+                    "key_name": key_info["name"],
+                    "permissions": key_info["permissions"],
+                    "rate_limit": 1000,
+                    "is_active": True,
+                    "created_at": datetime.now(timezone.utc),
+                    "expires_at": None,
+                    "last_used": None,
+                    "usage_count": 0
+                }
+                key_ref.set(key_data)
+                print(f"🔑 Added {key_info['name']} to Firestore: {api_key[:12]}...")
+            else:
+                print(f"🔑 {key_info['name']} already exists in Firestore")
             
     except Exception as e:
         print(f"❌ Failed to setup initial API keys: {e}")
