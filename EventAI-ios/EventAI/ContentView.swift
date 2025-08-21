@@ -161,6 +161,7 @@ struct ContentView: View {
                     icsContent: currentICSContent,
                     calendarService: calendarService,
                     subscriptionService: subscriptionService,
+                    adService: adService,
                     userTimezone: useLocationForTimezone && locationService.inferredTimezone != nil ? locationService.inferredTimezone! : selectedTimezone,
                     onEventsAdded: { addedCount in
                         // Clear input and show success state
@@ -925,6 +926,7 @@ struct EventPreviewView: View {
     let icsContent: String
     let calendarService: CalendarService
     @ObservedObject var subscriptionService: SubscriptionService
+    @ObservedObject var adService: AdService
     let userTimezone: TimeZone
     let onEventsAdded: (Int) -> Void
     let onShowPremiumModal: () -> Void
@@ -940,11 +942,12 @@ struct EventPreviewView: View {
     @State private var confettiTrigger: Int = 0
     @State private var showingShareSheet = false
     
-    init(events: [ParsedEvent], icsContent: String, calendarService: CalendarService, subscriptionService: SubscriptionService, userTimezone: TimeZone, onEventsAdded: @escaping (Int) -> Void, onShowPremiumModal: @escaping () -> Void) {
+    init(events: [ParsedEvent], icsContent: String, calendarService: CalendarService, subscriptionService: SubscriptionService, adService: AdService, userTimezone: TimeZone, onEventsAdded: @escaping (Int) -> Void, onShowPremiumModal: @escaping () -> Void) {
         self.events = events
         self.icsContent = icsContent
         self.calendarService = calendarService
         self.subscriptionService = subscriptionService
+        self.adService = adService
         self.userTimezone = userTimezone
         self.onEventsAdded = onEventsAdded
         self.onShowPremiumModal = onShowPremiumModal
@@ -1053,12 +1056,10 @@ struct EventPreviewView: View {
                                 let isLastEventAndNoBannerYet = index == events.count - 1 && events.count <= 3
                                 
                                 if shouldShowBanner || isLastEventAndNoBannerYet {
-                                    BannerAdView {
-                                        print("🔘 BannerAdView tapped - calling onShowPremiumModal")
-                                        onShowPremiumModal()
-                                    }
-                                    .frame(height: 60)
-                                    .padding(.vertical, 8)
+                                    adService.loadBannerAd()
+                                        .frame(height: 60)
+                                        .cornerRadius(8)
+                                        .padding(.vertical, 8)
                                 }
                             }
                         }
@@ -1207,6 +1208,28 @@ struct EventPreviewView: View {
     }
     
     private func addSelectedEventsToCalendar() {
+        // Show interstitial ad for non-premium users before adding events
+        if !subscriptionService.isPremium && adService.isInterstitialLoaded {
+            // Get the current view controller to present the interstitial ad
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let rootViewController = window.rootViewController {
+                
+                adService.showInterstitialAd(from: rootViewController) {
+                    // Continue with adding events after ad is dismissed
+                    self.performCalendarAdd()
+                }
+            } else {
+                // Fallback if we can't get view controller - just add events directly
+                performCalendarAdd()
+            }
+        } else {
+            // Premium user or no ad loaded - add events directly
+            performCalendarAdd()
+        }
+    }
+    
+    private func performCalendarAdd() {
         // Create ICS content with only selected events
         // For now, we'll use all events - in a real implementation, 
         // you'd filter the ICS content to only include selected events
