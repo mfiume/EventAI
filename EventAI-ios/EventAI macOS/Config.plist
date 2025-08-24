@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>API_KEY</key>
+    <string>eak_c47d0bde9529f7f254df4a68668c0f74402c89d7daf9c5ae4ed92b9296142b2a</string>
+    <key>API_BASE_URL</key>
+    <string>https://eventai.leveluplife.app/api</string>
+</dict>
+</plist>

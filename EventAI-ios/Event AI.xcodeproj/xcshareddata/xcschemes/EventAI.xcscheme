@@ -18,7 +18,7 @@
                BlueprintIdentifier = "1A234567890AFFFC"
                BuildableName = "EventAI.app"
                BlueprintName = "EventAI"
-               ReferencedContainer = "container:EventAI.xcodeproj">
+               ReferencedContainer = "container:Event AI.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -47,7 +47,7 @@
             BlueprintIdentifier = "1A234567890AFFFC"
             BuildableName = "EventAI.app"
             BlueprintName = "EventAI"
-            ReferencedContainer = "container:EventAI.xcodeproj">
+            ReferencedContainer = "container:Event AI.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -64,7 +64,7 @@
             BlueprintIdentifier = "1A234567890AFFFC"
             BuildableName = "EventAI.app"
             BlueprintName = "EventAI"
-            ReferencedContainer = "container:EventAI.xcodeproj">
+            ReferencedContainer = "container:Event AI.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
@@ -73,6 +73,7 @@
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
+      customArchiveName = "Event AI"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>

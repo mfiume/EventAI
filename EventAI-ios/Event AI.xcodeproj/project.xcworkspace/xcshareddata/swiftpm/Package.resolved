@@ -1,13 +1,13 @@
 {
-  "originHash" : "3620a1a13b68d354601fbd46a1f3165ec9cfc5cce03f385c8435bc658acccd6a",
+  "originHash" : "01170e92d720559af00ef07367af74afaa0a065600a0181db17b9e4bd04b2c4d",
   "pins" : [
     {
       "identity" : "purchases-ios-spm",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RevenueCat/purchases-ios-spm.git",
       "state" : {
-        "revision" : "d9155fd20755ce900878275d56e4878c7fdfe2c1",
-        "version" : "5.34.0"
+        "revision" : "b2a5f6c6fb4de109fc6dd6491d7f0657fbc983bf",
+        "version" : "5.35.0"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/googleads/swift-package-manager-google-mobile-ads.git",
       "state" : {
-        "revision" : "49efd19f8f4bbe130de7e2ee9e061d202a9a2a8b",
-        "version" : "12.8.0"
+        "revision" : "2c121260b1cc690134bdac36cefd330f48cda3f5",
+        "version" : "12.9.0"
       }
     },
     {

@@ -114,7 +114,7 @@ class SubscriptionService_RevenueCat: NSObject, ObservableObject {
             // Handle specific RevenueCat/StoreKit errors
             let errorDescription = error.localizedDescription.lowercased()
             if errorDescription.contains("cancelled") || errorDescription.contains("canceled") {
-                purchaseError = "Restore was cancelled. Please try again and complete Apple ID authentication when prompted."
+                purchaseError = "Restore was cancelled. Please try again and complete Apple ID authentication when prompted.\n\nTip: If iOS capitalizes your email, manually correct it before signing in."
             } else if let revenueCatError = error as? ErrorCode {
                 print("   RevenueCat error code: \(revenueCatError)")
                 switch revenueCatError {

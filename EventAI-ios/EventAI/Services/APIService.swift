@@ -121,9 +121,21 @@ class APIService: ObservableObject {
             fatalError("❌ BACKEND_BASE_URL not found in configuration")
         }
         
-        guard let apiKey = Bundle.main.infoDictionary?["API_KEY"] as? String else {
+        // Use development API key for debug builds, production key for release
+        let configApiKey = Bundle.main.infoDictionary?["API_KEY"] as? String
+        
+        #if DEBUG
+        // Development API key with high limits - NEVER goes to App Store
+        let devApiKey = "eak_bf8b7a059ab93f3156960babcd922c0cc8a9ab834948b4a800353c9d2242795c"
+        let apiKey = devApiKey
+        print("🔧 Using development API key with high limits")
+        #else
+        // Production API key for App Store builds
+        guard let apiKey = configApiKey else {
             fatalError("❌ API_KEY not found in configuration")
         }
+        print("🚀 Using production API key")
+        #endif
         
         self.baseURL = baseURL
         self.apiKey = apiKey

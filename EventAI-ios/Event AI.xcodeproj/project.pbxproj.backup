@@ -1,0 +1,841 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1A234567890A0001 /* EventAIApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0000 /* EventAIApp.swift */; };
+		1A234567890A0003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0002 /* ContentView.swift */; };
+		1A234567890A0005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0004 /* Assets.xcassets */; };
+		1A234567890A0008 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0007 /* Preview Assets.xcassets */; };
+		1A234567890A0010 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A000F /* APIService.swift */; };
+		1A234567890A0012 /* CalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0011 /* CalendarService.swift */; };
+		1A234567890A0014 /* AdService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0013 /* AdService.swift */; };
+		1A234567890A0016 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0015 /* LocationService.swift */; };
+		1A234567890A0018 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0017 /* SubscriptionService.swift */; };
+		1A234567890A001A /* TimezonePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0019 /* TimezonePickerView.swift */; };
+		1A234567890A001E /* RevenueCatConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A001D /* RevenueCatConfig.swift */; };
+		1A234567890A0020 /* RevenueCatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A001F /* RevenueCatService.swift */; };
+		1A234567890A0022 /* SubscriptionService_RevenueCat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0021 /* SubscriptionService_RevenueCat.swift */; };
+		1A234567890A0024 /* SubscriptionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0023 /* SubscriptionTestView.swift */; };
+		4E1D39342E4916E100638509 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 4E1D39372E4916E100638509 /* RevenueCat */; };
+		4E1D39352E4916E100638509 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4E1D39382E4916E100638509 /* RevenueCatUI */; };
+		4E1D393C2E4916FE00638509 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E1D393B2E4916FE00638509 /* StoreKit.framework */; };
+		4ECC44D92E46FF3C008B84CC /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4ECC44D82E46FF3C008B84CC /* GoogleMobileAds */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4E0D54012E5AA535005F33E6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1A234567890AFFF5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4E0D53F22E5AA533005F33E6;
+			remoteInfo = "EventAI macOS";
+		};
+		4E0D540B2E5AA535005F33E6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1A234567890AFFF5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4E0D53F22E5AA533005F33E6;
+			remoteInfo = "EventAI macOS";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1A234567890A0000 /* EventAIApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventAIApp.swift; sourceTree = "<group>"; };
+		1A234567890A0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		1A234567890A0004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1A234567890A0007 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		1A234567890A000F /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
+		1A234567890A0011 /* CalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarService.swift; sourceTree = "<group>"; };
+		1A234567890A0013 /* AdService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdService.swift; sourceTree = "<group>"; };
+		1A234567890A0015 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		1A234567890A0017 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
+		1A234567890A0019 /* TimezonePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimezonePickerView.swift; sourceTree = "<group>"; };
+		1A234567890A001B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1A234567890A001D /* RevenueCatConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatConfig.swift; sourceTree = "<group>"; };
+		1A234567890A001F /* RevenueCatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatService.swift; sourceTree = "<group>"; };
+		1A234567890A0021 /* SubscriptionService_RevenueCat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService_RevenueCat.swift; sourceTree = "<group>"; };
+		1A234567890A0023 /* SubscriptionTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionTestView.swift; sourceTree = "<group>"; };
+		1A234567890A0026 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		1A234567890A0027 /* EventAI.storekit */ = {isa = PBXFileReference; lastKnownFileType = text.storekit; path = EventAI.storekit; sourceTree = "<group>"; };
+		1A234567890AFFFD /* EventAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EventAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E0D53F32E5AA533005F33E6 /* EventAI macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "EventAI macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E0D54002E5AA535005F33E6 /* EventAI macOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "EventAI macOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E0D540A2E5AA535005F33E6 /* EventAI macOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "EventAI macOSUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E1D393B2E4916FE00638509 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		4EB28BD32E56CBF5008BFAAE /* Config-Dev.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Config-Dev.xcconfig"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		4E0D53F42E5AA533005F33E6 /* EventAI macOS */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "EventAI macOS"; sourceTree = "<group>"; };
+		4E0D54032E5AA535005F33E6 /* EventAI macOSTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "EventAI macOSTests"; sourceTree = "<group>"; };
+		4E0D540D2E5AA535005F33E6 /* EventAI macOSUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "EventAI macOSUITests"; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1A234567890AFFFA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4ECC44D92E46FF3C008B84CC /* GoogleMobileAds in Frameworks */,
+				4E1D393C2E4916FE00638509 /* StoreKit.framework in Frameworks */,
+				4E1D39342E4916E100638509 /* RevenueCat in Frameworks */,
+				4E1D39352E4916E100638509 /* RevenueCatUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0D53F02E5AA533005F33E6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0D53FD2E5AA535005F33E6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0D54072E5AA535005F33E6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1A234567890A0006 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				1A234567890A0007 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		1A234567890A000E /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				1A234567890A000F /* APIService.swift */,
+				1A234567890A0011 /* CalendarService.swift */,
+				1A234567890A0013 /* AdService.swift */,
+				1A234567890A0015 /* LocationService.swift */,
+				1A234567890A0017 /* SubscriptionService.swift */,
+				1A234567890A001F /* RevenueCatService.swift */,
+				1A234567890A0021 /* SubscriptionService_RevenueCat.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		1A234567890A001C /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				1A234567890A0019 /* TimezonePickerView.swift */,
+				1A234567890A0023 /* SubscriptionTestView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		1A234567890A0025 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				1A234567890A001D /* RevenueCatConfig.swift */,
+				1A234567890A0026 /* Config.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		1A234567890AFFF4 = {
+			isa = PBXGroup;
+			children = (
+				1A234567890AFFFF /* EventAI */,
+				1A234567890A0027 /* EventAI.storekit */,
+				4E0D53F42E5AA533005F33E6 /* EventAI macOS */,
+				4E0D54032E5AA535005F33E6 /* EventAI macOSTests */,
+				4E0D540D2E5AA535005F33E6 /* EventAI macOSUITests */,
+				4E1D393A2E4916FE00638509 /* Frameworks */,
+				1A234567890AFFFE /* Products */,
+				4EB28BD32E56CBF5008BFAAE /* Config-Dev.xcconfig */,
+			);
+			sourceTree = "<group>";
+		};
+		1A234567890AFFFE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1A234567890AFFFD /* EventAI.app */,
+				4E0D53F32E5AA533005F33E6 /* EventAI macOS.app */,
+				4E0D54002E5AA535005F33E6 /* EventAI macOSTests.xctest */,
+				4E0D540A2E5AA535005F33E6 /* EventAI macOSUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		1A234567890AFFFF /* EventAI */ = {
+			isa = PBXGroup;
+			children = (
+				1A234567890A0000 /* EventAIApp.swift */,
+				1A234567890A0002 /* ContentView.swift */,
+				1A234567890A000E /* Services */,
+				1A234567890A001C /* Views */,
+				1A234567890A0025 /* Config */,
+				1A234567890A0004 /* Assets.xcassets */,
+				1A234567890A001B /* Info.plist */,
+				1A234567890A0006 /* Preview Content */,
+			);
+			path = EventAI;
+			sourceTree = "<group>";
+		};
+		4E1D393A2E4916FE00638509 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				4E1D393B2E4916FE00638509 /* StoreKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1A234567890AFFFC /* EventAI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1A234567890A000B /* Build configuration list for PBXNativeTarget "EventAI" */;
+			buildPhases = (
+				1A234567890AFFF9 /* Sources */,
+				1A234567890AFFFA /* Frameworks */,
+				1A234567890AFFFB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EventAI;
+			productName = EventAI;
+			productReference = 1A234567890AFFFD /* EventAI.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4E0D53F22E5AA533005F33E6 /* EventAI macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E0D54122E5AA535005F33E6 /* Build configuration list for PBXNativeTarget "EventAI macOS" */;
+			buildPhases = (
+				4E0D53EF2E5AA533005F33E6 /* Sources */,
+				4E0D53F02E5AA533005F33E6 /* Frameworks */,
+				4E0D53F12E5AA533005F33E6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4E0D53F42E5AA533005F33E6 /* EventAI macOS */,
+			);
+			name = "EventAI macOS";
+			packageProductDependencies = (
+			);
+			productName = "EventAI macOS";
+			productReference = 4E0D53F32E5AA533005F33E6 /* EventAI macOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4E0D53FF2E5AA535005F33E6 /* EventAI macOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E0D54152E5AA535005F33E6 /* Build configuration list for PBXNativeTarget "EventAI macOSTests" */;
+			buildPhases = (
+				4E0D53FC2E5AA535005F33E6 /* Sources */,
+				4E0D53FD2E5AA535005F33E6 /* Frameworks */,
+				4E0D53FE2E5AA535005F33E6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4E0D54022E5AA535005F33E6 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4E0D54032E5AA535005F33E6 /* EventAI macOSTests */,
+			);
+			name = "EventAI macOSTests";
+			packageProductDependencies = (
+			);
+			productName = "EventAI macOSTests";
+			productReference = 4E0D54002E5AA535005F33E6 /* EventAI macOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4E0D54092E5AA535005F33E6 /* EventAI macOSUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E0D54182E5AA535005F33E6 /* Build configuration list for PBXNativeTarget "EventAI macOSUITests" */;
+			buildPhases = (
+				4E0D54062E5AA535005F33E6 /* Sources */,
+				4E0D54072E5AA535005F33E6 /* Frameworks */,
+				4E0D54082E5AA535005F33E6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4E0D540C2E5AA535005F33E6 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4E0D540D2E5AA535005F33E6 /* EventAI macOSUITests */,
+			);
+			name = "EventAI macOSUITests";
+			packageProductDependencies = (
+			);
+			productName = "EventAI macOSUITests";
+			productReference = 4E0D540A2E5AA535005F33E6 /* EventAI macOSUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1A234567890AFFF5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1540;
+				TargetAttributes = {
+					1A234567890AFFFC = {
+						CreatedOnToolsVersion = 15.4;
+					};
+					4E0D53F22E5AA533005F33E6 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					4E0D53FF2E5AA535005F33E6 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 4E0D53F22E5AA533005F33E6;
+					};
+					4E0D54092E5AA535005F33E6 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 4E0D53F22E5AA533005F33E6;
+					};
+				};
+			};
+			buildConfigurationList = 1A234567890AFFF8 /* Build configuration list for PBXProject "Event AI" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 1A234567890AFFF4;
+			packageReferences = (
+				4ECC44D72E46FF3C008B84CC /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+				4E1D39392E4916E100638509 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+			);
+			productRefGroup = 1A234567890AFFFE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1A234567890AFFFC /* EventAI */,
+				4E0D53F22E5AA533005F33E6 /* EventAI macOS */,
+				4E0D53FF2E5AA535005F33E6 /* EventAI macOSTests */,
+				4E0D54092E5AA535005F33E6 /* EventAI macOSUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		1A234567890AFFFB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A234567890A0008 /* Preview Assets.xcassets in Resources */,
+				1A234567890A0005 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0D53F12E5AA533005F33E6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0D53FE2E5AA535005F33E6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0D54082E5AA535005F33E6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1A234567890AFFF9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A234567890A0003 /* ContentView.swift in Sources */,
+				1A234567890A0010 /* APIService.swift in Sources */,
+				1A234567890A0012 /* CalendarService.swift in Sources */,
+				1A234567890A0014 /* AdService.swift in Sources */,
+				1A234567890A0016 /* LocationService.swift in Sources */,
+				1A234567890A0018 /* SubscriptionService.swift in Sources */,
+				1A234567890A001A /* TimezonePickerView.swift in Sources */,
+				1A234567890A001E /* RevenueCatConfig.swift in Sources */,
+				1A234567890A0020 /* RevenueCatService.swift in Sources */,
+				1A234567890A0022 /* SubscriptionService_RevenueCat.swift in Sources */,
+				1A234567890A0024 /* SubscriptionTestView.swift in Sources */,
+				1A234567890A0001 /* EventAIApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0D53EF2E5AA533005F33E6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0D53FC2E5AA535005F33E6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0D54062E5AA535005F33E6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4E0D54022E5AA535005F33E6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4E0D53F22E5AA533005F33E6 /* EventAI macOS */;
+			targetProxy = 4E0D54012E5AA535005F33E6 /* PBXContainerItemProxy */;
+		};
+		4E0D540C2E5AA535005F33E6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4E0D53F22E5AA533005F33E6 /* EventAI macOS */;
+			targetProxy = 4E0D540B2E5AA535005F33E6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1A234567890A0009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		1A234567890A000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		1A234567890A000C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4EB28BD32E56CBF5008BFAAE /* Config-Dev.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_ASSET_PATHS = "\"EventAI/Preview Content\"";
+				DEVELOPMENT_TEAM = D8R2VUC2Y3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EventAI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Event AI";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "EventAI needs access to your calendar to add events created from text.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "EventAI needs access to your camera to take photos of schedules and documents that can be converted to calendar events.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "EventAI uses your location to automatically detect your timezone and provide location context for events.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leveluplife.eventai;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1A234567890A000D /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1A234567890A0026 /* Config.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_ASSET_PATHS = "\"EventAI/Preview Content\"";
+				DEVELOPMENT_TEAM = D8R2VUC2Y3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EventAI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Event AI";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "EventAI needs access to your calendar to add events created from text.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "EventAI needs access to your camera to take photos of schedules and documents that can be converted to calendar events.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "EventAI uses your location to automatically detect your timezone and provide location context for events.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leveluplife.eventai;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4E0D54132E5AA535005F33E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "EventAI macOS/EventAI_macOS.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D8R2VUC2Y3;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.leveluplife.eventai.macos.EventAI-macOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		4E0D54142E5AA535005F33E6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "EventAI macOS/EventAI_macOS.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D8R2VUC2Y3;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.leveluplife.eventai.macos.EventAI-macOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		4E0D54162E5AA535005F33E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D8R2VUC2Y3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.leveluplife.eventai.macos.EventAI-macOSTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EventAI macOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EventAI macOS";
+			};
+			name = Debug;
+		};
+		4E0D54172E5AA535005F33E6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D8R2VUC2Y3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.leveluplife.eventai.macos.EventAI-macOSTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EventAI macOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EventAI macOS";
+			};
+			name = Release;
+		};
+		4E0D54192E5AA535005F33E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D8R2VUC2Y3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.leveluplife.eventai.macos.EventAI-macOSUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "EventAI macOS";
+			};
+			name = Debug;
+		};
+		4E0D541A2E5AA535005F33E6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D8R2VUC2Y3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.leveluplife.eventai.macos.EventAI-macOSUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "EventAI macOS";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1A234567890A000B /* Build configuration list for PBXNativeTarget "EventAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A234567890A000C /* Debug */,
+				1A234567890A000D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1A234567890AFFF8 /* Build configuration list for PBXProject "Event AI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A234567890A0009 /* Debug */,
+				1A234567890A000A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4E0D54122E5AA535005F33E6 /* Build configuration list for PBXNativeTarget "EventAI macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E0D54132E5AA535005F33E6 /* Debug */,
+				4E0D54142E5AA535005F33E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4E0D54152E5AA535005F33E6 /* Build configuration list for PBXNativeTarget "EventAI macOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E0D54162E5AA535005F33E6 /* Debug */,
+				4E0D54172E5AA535005F33E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4E0D54182E5AA535005F33E6 /* Build configuration list for PBXNativeTarget "EventAI macOSUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E0D54192E5AA535005F33E6 /* Debug */,
+				4E0D541A2E5AA535005F33E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4E1D39392E4916E100638509 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.34.0;
+			};
+		};
+		4ECC44D72E46FF3C008B84CC /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.8.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4E1D39372E4916E100638509 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E1D39392E4916E100638509 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+		4E1D39382E4916E100638509 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E1D39392E4916E100638509 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
+		};
+		4ECC44D82E46FF3C008B84CC /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4ECC44D72E46FF3C008B84CC /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 1A234567890AFFF5 /* Project object */;
+}

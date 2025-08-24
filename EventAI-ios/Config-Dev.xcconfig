@@ -1,0 +1,16 @@
+// Development Configuration file for EventAI
+// This file contains build-time configuration variables for development
+// IMPORTANT: This file is gitignored and should never be committed
+
+// RevenueCat Configuration
+REVENUECAT_API_KEY = appl_ePVWxjqhniMdIuqgbrXAZQExybI
+
+// Backend Configuration - PRODUCTION (same as prod)
+BACKEND_BASE_URL = https:/$()/eventai.leveluplife.app/api
+API_BASE_URL = https:/$()/eventai.leveluplife.app/api
+
+// API Authentication - Using high-limit development key (stored in Firestore with 1000/2000 limits)
+API_KEY = eak_bf8b7a059ab93f3156960babcd922c0cc8a9ab834948b4a800353c9d2242795c
+
+// Environment
+BUILD_ENVIRONMENT = development

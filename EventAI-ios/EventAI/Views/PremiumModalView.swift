@@ -6,6 +6,7 @@ struct PremiumModalView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var showRestoreInfo = false
     @State private var localizedPrice: String? = nil
 
     var body: some View {
@@ -143,7 +144,7 @@ struct PremiumModalView: View {
                         // Legal links (Apple requirement)
                         HStack(spacing: 20) {
                             Button("Terms of Use") {
-                                if let url = URL(string: "https://leveluplife.app/eventai/terms") {
+                                if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
                                     UIApplication.shared.open(url)
                                 }
                             }
@@ -161,9 +162,7 @@ struct PremiumModalView: View {
                         .padding(.top, 4)
                         
                         Button("Restore Purchases") {
-                            Task {
-                                await restorePurchases()
-                            }
+                            showRestoreInfo = true
                         }
                         .font(.system(size: 16))
                         .foregroundColor(.blue)
@@ -206,6 +205,16 @@ struct PremiumModalView: View {
                     }
                 }
             }
+        }
+        .alert("Restore Purchases", isPresented: $showRestoreInfo) {
+            Button("Continue") {
+                Task {
+                    await restorePurchases()
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("iOS will ask for your Apple ID. If it capitalizes your email address, manually correct it before signing in.\n\nExample: Change 'John@gmail.com' back to 'john@gmail.com'")
         }
         .onAppear {
             Task {
