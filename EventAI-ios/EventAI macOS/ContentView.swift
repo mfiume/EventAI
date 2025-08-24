@@ -65,7 +65,7 @@ struct ContentView: View {
                         }
                     }
                     
-                    Text("Create calendar events from natural language")
+                    Text("Create calendar events from text, emails, and photos.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -149,13 +149,6 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(inputText.isEmpty || isProcessing)
-                    
-                    Button("Clear") {
-                        inputText = ""
-                        events = []
-                        showingResults = false
-                    }
-                    .disabled(inputText.isEmpty && events.isEmpty)
                     
                     if isProcessing {
                         ProgressView()
