@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import EventKit
 
 struct ContentView: View {
     @EnvironmentObject var apiService: SharedAPIService
@@ -15,6 +16,10 @@ struct ContentView: View {
     @State private var selectedTimezone = TimeZone.current.identifier
     @State private var selectedImage: NSImage?
     @State private var showingImagePicker = false
+    @State private var selectedCalendar: EKCalendar?
+    @State private var showingCalendarPicker = false
+    @State private var showingTimezonePicker = false
+    @State private var selectedEventIDs: Set<UUID> = []
     
     private let commonTimezones = [
         "America/New_York",
@@ -31,57 +36,131 @@ struct ContentView: View {
     ]
     
     var body: some View {
-        HSplitView {
-            // Left Panel - Input
-            VStack(alignment: .leading, spacing: 20) {
-                // Header
-                VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 0) {
+            // Top Bar - Usage and Subscription Status
+            if let usage = usageInfo {
+                HStack(spacing: 12) {
+                    // Conversion counter - compact format
+                    Text("Daily conversions: \(usage.remaining) of \(usage.limit) remaining")
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    // Status badge - smaller
+                    if usage.isPremium {
+                        HStack(spacing: 3) {
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundColor(.yellow)
+                            Text("Premium")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .foregroundColor(.blue)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(4)
+                    } else {
+                        HStack(spacing: 8) {
+                            Text("Free")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.1))
+                                .cornerRadius(4)
+                            
+                            Button(action: {
+                                // Future subscription service integration
+                                print("Upgrade tapped - future subscription integration")
+                            }) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "crown.fill")
+                                        .font(.caption2)
+                                    Text("Upgrade")
+                                        .font(.caption2)
+                                        .fontWeight(.medium)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color.blue, Color.purple],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(4)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(NSColor.controlBackgroundColor))
+                .overlay(
+                    Rectangle()
+                        .fill(Color(NSColor.separatorColor))
+                        .frame(height: 1),
+                    alignment: .bottom
+                )
+            }
+            
+            // Main Content
+            HSplitView {
+                // Left Panel - Input
+                VStack(alignment: .leading, spacing: 16) {
+                
+                // Text input area
+                VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Image(systemName: "calendar.badge.plus")
-                            .font(.title2)
-                            .foregroundColor(.blue)
-                        Text("EventAI")
-                            .font(.title)
-                            .fontWeight(.bold)
+                        Text("Describe your event")
+                            .font(.subheadline)
                         
                         Spacer()
                         
-                        // Usage indicator
-                        if let usage = usageInfo {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("\(usage.remaining) of \(usage.limit) remaining")
+                        // Timezone and Photo controls - right aligned
+                        HStack(spacing: 12) {
+                            Button(selectedTimezone.replacingOccurrences(of: "_", with: " ")) {
+                                showingTimezonePicker = true
+                            }
+                            .buttonStyle(.bordered)
+                            
+                            if let image = selectedImage {
+                                HStack(spacing: 4) {
+                                    Image(nsImage: image)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 20, height: 20)
+                                        .clipShape(RoundedRectangle(cornerRadius: 2))
+                                    
+                                    Button("Remove") {
+                                        selectedImage = nil
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .foregroundColor(.red)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
-                                if usage.isPremium {
-                                    Text("Premium")
-                                        .font(.caption2)
-                                        .foregroundColor(.blue)
-                                } else {
-                                    Text("Free")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
                                 }
+                            } else {
+                                Button("Add Photo") {
+                                    showingImagePicker = true
+                                }
+                                .buttonStyle(.bordered)
                             }
                         }
                     }
                     
-                    Text("Create calendar events from text, emails, and photos.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                // Text input area
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Describe your event:")
-                        .font(.headline)
-                    
                     TextEditor(text: $inputText)
                         .font(.body)
-                        .frame(minHeight: 120)
                         .padding(8)
                         .background(Color(NSColor.textBackgroundColor))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
+                            Rectangle()
                                 .stroke(Color(NSColor.separatorColor), lineWidth: 1)
                         )
                         .onDrop(of: [.text, .fileURL], isTargeted: nil) { providers in
@@ -93,55 +172,12 @@ struct ContentView: View {
                         .foregroundColor(.secondary)
                 }
                 
-                // Timezone and Photo controls
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Timezone:")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        Picker("Timezone", selection: $selectedTimezone) {
-                            ForEach(commonTimezones, id: \.self) { timezone in
-                                Text(timezone.replacingOccurrences(of: "_", with: " "))
-                                    .tag(timezone)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(maxWidth: 200)
-                        
-                        Spacer()
-                    }
-                    
-                    HStack {
-                        Text("Photo (optional):")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        if let image = selectedImage {
-                            Image(nsImage: image)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 40, height: 40)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                            
-                            Button("Remove") {
-                                selectedImage = nil
-                            }
-                            .buttonStyle(.borderless)
-                            .foregroundColor(.red)
-                        } else {
-                            Button("Add Photo") {
-                                showingImagePicker = true
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                        
-                        Spacer()
-                    }
-                }
+                Spacer()
                 
-                // Action buttons
+                // Action buttons - bottom aligned
                 HStack {
+                    Spacer()
+                    
                     Button("Create Events") {
                         Task {
                             await processText()
@@ -149,21 +185,25 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(inputText.isEmpty || isProcessing)
-                    
-                    if isProcessing {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    }
                 }
-                
-                Spacer()
             }
-            .padding()
-            .frame(minWidth: 350, maxWidth: 400)
+            .padding(8)
+            .frame(minWidth: 80)
             
             // Right Panel - Results
             VStack(alignment: .leading, spacing: 16) {
-                if showingResults && !events.isEmpty {
+                if isProcessing {
+                    // Processing state
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        
+                        Text("Creating events...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if showingResults && !events.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Found \(events.count) event\(events.count == 1 ? "" : "s")")
                             .font(.headline)
@@ -171,36 +211,85 @@ struct ContentView: View {
                         ScrollView {
                             LazyVStack(spacing: 12) {
                                 ForEach(events) { event in
-                                    EventCard(event: event)
+                                    EventCardWithSelection(event: event, isSelected: Binding(
+                                        get: { selectedEventIDs.contains(event.id) },
+                                        set: { isSelected in
+                                            if isSelected {
+                                                selectedEventIDs.insert(event.id)
+                                            } else {
+                                                selectedEventIDs.remove(event.id)
+                                            }
+                                        }
+                                    ))
                                 }
                             }
                             .padding(.vertical, 8)
                         }
                         
-                        // Add to Calendar button
-                        HStack {
-                            Button("Add All to Calendar") {
-                                Task {
-                                    await addEventsToCalendar()
+                        // Calendar Selection and Add Button
+                        VStack(spacing: 12) {
+                            // Calendar Selection (only show when access granted)
+                            if calendarService.hasCalendarAccess && !calendarService.availableCalendars.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "folder.badge.plus")
+                                            .font(.caption)
+                                            .foregroundColor(.green)
+                                        
+                                        Text("Add to Calendar:")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                        
+                                        Spacer()
+                                    }
+                                    
+                                    Button(action: { showingCalendarPicker = true }) {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(selectedCalendar?.title ?? calendarService.getDefaultCalendar()?.title ?? "Default Calendar")
+                                                    .font(.subheadline)
+                                                    .fontWeight(.medium)
+                                                    .foregroundColor(.primary)
+                                                
+                                                if let source = (selectedCalendar ?? calendarService.getDefaultCalendar())?.source {
+                                                    Text(source.title)
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            Image(systemName: "chevron.down")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 12)
+                                        .background(Color(NSColor.controlBackgroundColor))
+                                        .cornerRadius(8)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(events.isEmpty)
                             
-                            if !calendarService.hasCalendarAccess && calendarService.canRequestAccess {
-                                Button("Request Calendar Access") {
+                            // Add to Calendar button (always show)
+                            HStack {
+                                Spacer()
+                                
+                                // Always show "Add X to Calendar" when events exist, handle permissions in the action
+                                Button("Add \(selectedEventIDs.count) to Calendar") {
                                     Task {
-                                        await requestCalendarAccess()
+                                        if !calendarService.hasCalendarAccess {
+                                            await requestCalendarAccess()
+                                        } else {
+                                            await addSelectedEventsToCalendar()
+                                        }
                                     }
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(.borderedProminent)
+                                .disabled(selectedEventIDs.count == 0)
                             }
-                            
-                            Spacer()
-                            
-                            Text("Calendar access: \(calendarService.hasCalendarAccess ? "✅" : "❌")")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
                         }
                     }
                 } else if showingResults {
@@ -220,18 +309,11 @@ struct ContentView: View {
                 } else {
                     // Welcome state
                     VStack(spacing: 24) {
-                        Image(systemName: "calendar.badge.plus")
-                            .font(.system(size: 64))
-                            .foregroundColor(.blue)
-                        
                         VStack(spacing: 8) {
-                            Text("Welcome to EventAI")
+                            Text("Enter event details to get started")
                                 .font(.title2)
                                 .fontWeight(.semibold)
-                            
-                            Text("Enter event details to get started")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.primary)
                         }
                         
                         VStack(alignment: .leading, spacing: 8) {
@@ -243,17 +325,18 @@ struct ContentView: View {
                             Label("Keyboard shortcuts", systemImage: "keyboard")
                             Label("Native calendar integration", systemImage: "calendar")
                         }
-                        .padding()
+                        .padding(12)
                         .background(Color(NSColor.controlBackgroundColor))
                         .cornerRadius(12)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .padding()
-            .frame(minWidth: 400)
+            .padding(8)
+            .frame(minWidth: 80)
+            }
         }
-        .navigationTitle("EventAI")
+        .navigationTitle("Event AI")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Quick Create", systemImage: "plus.circle.fill") {
@@ -267,6 +350,11 @@ struct ContentView: View {
         }
         .onAppear {
             loadUsage()
+            // Initialize selected calendar with default
+            if selectedCalendar == nil {
+                selectedCalendar = calendarService.getDefaultCalendar()
+            }
+            
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK") { }
@@ -287,6 +375,15 @@ struct ContentView: View {
                 errorMessage = error.localizedDescription
                 showingError = true
             }
+        }
+        .sheet(isPresented: $showingCalendarPicker) {
+            CalendarPickerView(
+                availableCalendars: calendarService.availableCalendars,
+                selectedCalendar: $selectedCalendar
+            )
+        }
+        .sheet(isPresented: $showingTimezonePicker) {
+            MacOSTimezonePickerView(selectedTimezone: $selectedTimezone)
         }
     }
     
@@ -317,18 +414,12 @@ struct ContentView: View {
                 self.showingResults = true
                 self.isProcessing = false
                 
-                // Update usage info if available
-                if let usage = response.usageInfo {
-                    self.usageInfo = SharedAPIService.UsageResponse(
-                        allowed: usage.remaining > 0,
-                        count: usage.count,
-                        limit: usage.limit,
-                        remaining: usage.remaining,
-                        isPremium: false,
-                        resetDate: usage.resetDate,
-                        resetTime: nil,
-                        resetTimezone: nil
-                    )
+                // Select all events by default
+                self.selectedEventIDs = Set(response.events.map { $0.id })
+                
+                // Refresh usage data to get current count
+                Task {
+                    await refreshUsageData()
                 }
             }
         } catch {
@@ -340,8 +431,9 @@ struct ContentView: View {
         }
     }
     
-    private func addEventsToCalendar() async {
-        let result = await calendarService.addEventsToCalendar(events)
+    private func addSelectedEventsToCalendar() async {
+        let selectedEvents = events.filter { selectedEventIDs.contains($0.id) }
+        let result = await calendarService.addEventsToCalendar(selectedEvents, selectedCalendar: selectedCalendar)
         
         await MainActor.run {
             if result.success > 0 {
@@ -380,8 +472,20 @@ struct ContentView: View {
                     self.usageInfo = usage
                 }
             } catch {
-                // Handle silently for now
+                print("❌ Failed to load usage: \(error)")
+                // Don't show usage UI if API fails
             }
+        }
+    }
+    
+    private func refreshUsageData() async {
+        do {
+            let usage = try await apiService.getUsage()
+            await MainActor.run {
+                self.usageInfo = usage
+            }
+        } catch {
+            print("❌ Failed to refresh usage: \(error)")
         }
     }
     
@@ -444,53 +548,670 @@ struct ContentView: View {
 // MARK: - Event Card View
 struct EventCard: View {
     let event: SharedAPIService.CalendarEvent
+    @State private var showingOccurrences = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(event.title)
-                .font(.headline)
-            
-            if let startDate = event.formattedStartDate {
-                HStack {
-                    Image(systemName: "clock")
-                        .foregroundColor(.blue)
-                    
-                    if event.isAllDay {
-                        Text(DateFormatter.dayFormatter.string(from: startDate))
-                    } else {
-                        Text(DateFormatter.dateTimeFormatter.string(from: startDate))
-                    }
-                    
-                    if event.isRecurring {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundColor(.orange)
-                    }
-                }
-                .font(.subheadline)
+        VStack(alignment: .leading, spacing: 12) {
+            // Title
+            HStack {
+                Text(event.title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Spacer()
             }
             
+            // Enhanced recurring badge
+            if event.isRecurring {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                        Text(formatEnhancedRecurrenceBadge(event))
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                            .fontWeight(.medium)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.orange.opacity(0.15))
+                    .cornerRadius(6)
+                }
+            }
+            
+            // Time and date info
+            if let startDate = event.formattedStartDate {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "clock")
+                            .foregroundColor(.blue)
+                            .font(.caption)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            // Show "First occurrence" for recurring events
+                            if event.isRecurring {
+                                Text("First occurrence")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                    .fontWeight(.medium)
+                            }
+                            
+                            Text(formatRecurringEventTime(start: startDate, end: event.formattedEndDate, isRecurring: event.isRecurring))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                            
+                            if let timezone = event.timezone {
+                                Text(timezone.replacingOccurrences(of: "_", with: " "))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        // Duration indicator
+                        if let endDate = event.formattedEndDate {
+                            let durationText = isAllDayEvent(start: startDate, end: endDate) ? "All Day" : formatDuration(start: startDate, end: endDate)
+                            if !durationText.isEmpty {
+                                Text(durationText)
+                                    .font(.caption2)
+                                    .foregroundColor(.blue)
+                                    .fontWeight(.medium)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(4)
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color.blue.opacity(0.05))
+                .cornerRadius(10)
+            }
+            
+            // Expandable occurrences for recurring events
+            if event.isRecurring {
+                VStack(alignment: .leading, spacing: 8) {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showingOccurrences.toggle()
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: showingOccurrences ? "chevron.down" : "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                            
+                            Text(showingOccurrences ? "Hide occurrences" : "Show next occurrences")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .fontWeight(.medium)
+                            
+                            Spacer()
+                            
+                            // Show infinity icon for indefinite recurrences
+                            if isIndefiniteRecurrence(for: event) {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "infinity")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Text("more")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                let totalOccurrences = getOccurrenceCount(for: event)
+                                let remainingOccurrences = totalOccurrences - 1
+                                Text("\(remainingOccurrences) more")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if showingOccurrences {
+                        LazyVStack(alignment: .leading, spacing: 6) {
+                            ForEach(generateNextOccurrences(for: event).prefix(10), id: \.self) { occurrence in
+                                HStack(spacing: 8) {
+                                    Image(systemName: "clock")
+                                        .font(.caption2)
+                                        .foregroundColor(.blue.opacity(0.7))
+                                    
+                                    Text(formatOccurrenceDate(occurrence))
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 4)
+                                .background(Color.blue.opacity(0.03))
+                                .cornerRadius(6)
+                            }
+                            
+                            // Show "more available" indicator
+                            let futureOccurrences = generateNextOccurrences(for: event)
+                            let showingCount = min(10, futureOccurrences.count)
+                            let remainingAfterShown = futureOccurrences.count - showingCount
+                            
+                            if isIndefiniteRecurrence(for: event) || remainingAfterShown > 0 {
+                                HStack(spacing: 4) {
+                                    if isIndefiniteRecurrence(for: event) {
+                                        Image(systemName: "infinity")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text("continues indefinitely")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .italic()
+                                    } else {
+                                        Image(systemName: "ellipsis")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text("and \(remainingAfterShown) more occurrences")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .italic()
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+            
+            // Location
             if let location = event.location, !location.isEmpty {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "location")
                         .foregroundColor(.green)
+                        .font(.caption)
+                    
                     Text(location)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                        .fontWeight(.medium)
                 }
-                .font(.subheadline)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(Color.green.opacity(0.05))
+                .cornerRadius(8)
             }
             
+            // Description/Notes
             if let notes = event.notes, !notes.isEmpty {
-                Text(notes)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "text.alignleft")
+                        .foregroundColor(.purple)
+                        .font(.caption)
+                    
+                    Text(notes)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                        .fontWeight(.medium)
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(Color.purple.opacity(0.05))
+                .cornerRadius(8)
             }
         }
         .padding()
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(8)
     }
+    
+    // MARK: - Helper Methods
+    private func isAllDayEvent(start: Date, end: Date?) -> Bool {
+        guard let end = end else { return false }
+        
+        let calendar = Calendar.current
+        let startComponents = calendar.dateComponents([.hour, .minute, .second], from: start)
+        let endComponents = calendar.dateComponents([.hour, .minute, .second], from: end)
+        
+        // Check if start is at midnight (00:00:00)
+        let isStartMidnight = startComponents.hour == 0 && startComponents.minute == 0 && startComponents.second == 0
+        
+        // Check if end is at midnight (00:00:00) and is the next day
+        let isEndMidnight = endComponents.hour == 0 && endComponents.minute == 0 && endComponents.second == 0
+        let isNextDay = calendar.dateComponents([.day], from: start, to: end).day == 1
+        
+        return isStartMidnight && isEndMidnight && isNextDay
+    }
+    
+    private func formatRecurringEventTime(start: Date, end: Date?, isRecurring: Bool) -> String {
+        // Check if this is an all-day event
+        if isAllDayEvent(start: start, end: end) {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            dateFormatter.timeStyle = .none
+            
+            let dateString = dateFormatter.string(from: start)
+            
+            if isRecurring {
+                return "Starts \(dateString)"
+            } else {
+                return "\(dateString)"
+            }
+        }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+        
+        let startString = dateFormatter.string(from: start)
+        
+        if isRecurring {
+            return "Starts \(startString)"
+        } else {
+            return startString
+        }
+    }
+    
+    private func formatDuration(start: Date, end: Date?) -> String {
+        guard let end = end else { return "" }
+        
+        if isAllDayEvent(start: start, end: end) {
+            return "All Day"
+        }
+        
+        let timeInterval = end.timeIntervalSince(start)
+        let hours = Int(timeInterval) / 3600
+        let minutes = Int(timeInterval) % 3600 / 60
+        
+        if hours > 0 && minutes > 0 {
+            return "\(hours)h \(minutes)m"
+        } else if hours > 0 {
+            return "\(hours)h"
+        } else if minutes > 0 {
+            return "\(minutes)m"
+        } else {
+            return ""
+        }
+    }
+}
+
+// MARK: - Calendar Picker View
+struct CalendarPickerView: View {
+    let availableCalendars: [EKCalendar]
+    @Binding var selectedCalendar: EKCalendar?
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        NavigationView {
+            List(availableCalendars, id: \.calendarIdentifier) { calendar in
+                CalendarRow(
+                    calendar: calendar,
+                    isSelected: selectedCalendar?.calendarIdentifier == calendar.calendarIdentifier
+                ) {
+                    selectedCalendar = calendar
+                    presentationMode.wrappedValue.dismiss()
+                }
+            }
+            .navigationTitle("Choose Calendar")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+        .frame(minWidth: 300, minHeight: 250)
+    }
+}
+
+struct CalendarRow: View {
+    let calendar: EKCalendar
+    let isSelected: Bool
+    let onSelect: () -> Void
+    
+    var body: some View {
+        HStack {
+            Circle()
+                .fill(Color(calendar.cgColor))
+                .frame(width: 12, height: 12)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(calendar.title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                if let source = calendar.source {
+                    Text(source.title)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .foregroundColor(.blue)
+                    .fontWeight(.semibold)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect()
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Event Card With Selection
+struct EventCardWithSelection: View {
+    let event: SharedAPIService.CalendarEvent
+    @Binding var isSelected: Bool
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Radio button (selection indicator)
+            Button(action: {
+                isSelected.toggle()
+            }) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundColor(isSelected ? .blue : .secondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 8)
+            
+            // Event card content
+            EventCard(event: event)
+        }
+    }
+}
+
+// MARK: - Timezone Picker View
+struct MacOSTimezonePickerView: View {
+    @Binding var selectedTimezone: String
+    @Environment(\.presentationMode) var presentationMode
+    @State private var searchText = ""
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header with title and cancel button
+            HStack {
+                Text("Select Timezone")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button("Cancel") {
+                    presentationMode.wrappedValue.dismiss()
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding()
+            
+            Divider()
+            
+            // Search field
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("Search timezones...", text: $searchText)
+                    .textFieldStyle(.roundedBorder)
+            }
+            .padding()
+            
+            // Timezone list
+            List(filteredTimezones, id: \.identifier) { timezone in
+                MacOSTimezoneRow(
+                    timezone: timezone,
+                    isSelected: timezone.identifier == selectedTimezone
+                ) {
+                    selectedTimezone = timezone.identifier
+                    presentationMode.wrappedValue.dismiss()
+                }
+            }
+            .listStyle(.plain)
+        }
+        .frame(minWidth: 500, minHeight: 400)
+    }
+    
+    private var filteredTimezones: [TimeZone] {
+        let allTimezones = TimeZone.knownTimeZoneIdentifiers
+            .compactMap { TimeZone(identifier: $0) }
+            .sorted { timezone1, timezone2 in
+                let name1 = (timezone1.localizedName(for: .standard, locale: .current) ?? timezone1.identifier).replacingOccurrences(of: "_", with: " ")
+                let name2 = (timezone2.localizedName(for: .standard, locale: .current) ?? timezone2.identifier).replacingOccurrences(of: "_", with: " ")
+                return name1 < name2
+            }
+        
+        if searchText.isEmpty {
+            return allTimezones
+        } else {
+            return allTimezones.filter { timezone in
+                let name = (timezone.localizedName(for: .standard, locale: .current) ?? timezone.identifier).replacingOccurrences(of: "_", with: " ")
+                let identifier = timezone.identifier.replacingOccurrences(of: "_", with: " ")
+                return name.localizedCaseInsensitiveContains(searchText) || 
+                       identifier.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+}
+
+struct MacOSTimezoneRow: View {
+    let timezone: TimeZone
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(cleanTimezoneName)
+                    .font(.body)
+                Text(cleanIdentifier)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Text(gmtOffsetString)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(4)
+                .padding(.trailing, 8)
+            
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .foregroundColor(.blue)
+                    .fontWeight(.semibold)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap()
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private var cleanTimezoneName: String {
+        let name = timezone.localizedName(for: .standard, locale: .current) ?? timezone.identifier
+        return name.replacingOccurrences(of: "_", with: " ")
+    }
+    
+    private var cleanIdentifier: String {
+        return timezone.identifier.replacingOccurrences(of: "_", with: " ")
+    }
+    
+    private var gmtOffsetString: String {
+        let offset = timezone.secondsFromGMT()
+        let hours = offset / 3600
+        let minutes = abs(offset % 3600) / 60
+        
+        if hours == 0 && minutes == 0 {
+            return "GMT"
+        } else if minutes == 0 {
+            return String(format: "GMT%+d", hours)
+        } else {
+            let sign = hours >= 0 ? "+" : "-"
+            return String(format: "GMT%@%d:%02d", sign, abs(hours), minutes)
+        }
+    }
 }
 
 // MARK: - Extensions
+// MARK: - Recurring Events Helper Functions
+private func formatEnhancedRecurrenceBadge(_ event: SharedAPIService.CalendarEvent) -> String {
+    guard let startDate = event.formattedStartDate else { 
+        return "Recurs regularly"
+    }
+    
+    // Get base recurrence frequency
+    let baseRecurrence = formatRecurrenceFromPattern(event.recurrencePattern)
+    
+    // Format start date
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateStyle = .medium
+    dateFormatter.timeStyle = .none
+    let startDateString = dateFormatter.string(from: startDate)
+    
+    // Most recurring events from EventAI are indefinite
+    return "\(baseRecurrence), Starts \(startDateString)"
+}
+
+private func generateNextOccurrences(for event: SharedAPIService.CalendarEvent) -> [Date] {
+    guard let startDate = event.formattedStartDate,
+          let pattern = event.recurrencePattern?.uppercased() else {
+        return []
+    }
+    
+    var occurrences: [Date] = []
+    let calendar = Calendar.current
+    var currentDate = startDate
+    
+    // Parse frequency and interval from pattern
+    let frequency = extractFrequency(from: pattern)
+    let interval = extractInterval(from: pattern) ?? 1
+    
+    // Generate up to 50 occurrences (we'll show max 10, but calculate more for counting)
+    for _ in 0..<50 {
+        switch frequency {
+        case "DAILY":
+            currentDate = calendar.date(byAdding: .day, value: interval, to: currentDate) ?? currentDate
+        case "WEEKLY":
+            currentDate = calendar.date(byAdding: .weekOfYear, value: interval, to: currentDate) ?? currentDate
+        case "MONTHLY":
+            currentDate = calendar.date(byAdding: .month, value: interval, to: currentDate) ?? currentDate
+        case "YEARLY":
+            currentDate = calendar.date(byAdding: .year, value: interval, to: currentDate) ?? currentDate
+        default:
+            break
+        }
+        
+        // Don't add dates more than 2 years in the future for display purposes
+        if currentDate.timeIntervalSince(Date()) > 2 * 365 * 24 * 3600 {
+            break
+        }
+        
+        occurrences.append(currentDate)
+    }
+    
+    return occurrences
+}
+
+private func isIndefiniteRecurrence(for event: SharedAPIService.CalendarEvent) -> Bool {
+    // Check if recurrence has no end date/count (indefinite)
+    guard let pattern = event.recurrencePattern?.uppercased() else { return false }
+    
+    // If pattern contains COUNT= or UNTIL=, it's not indefinite
+    if pattern.contains("COUNT=") || pattern.contains("UNTIL=") {
+        return false
+    }
+    
+    // Most EventAI recurring events are indefinite (no explicit end)
+    return true
+}
+
+private func formatOccurrenceDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    formatter.timeStyle = .none
+    return formatter.string(from: date)
+}
+
+private func getOccurrenceCount(for event: SharedAPIService.CalendarEvent) -> Int {
+    guard let pattern = event.recurrencePattern?.uppercased() else { return 1 }
+    
+    // Extract COUNT from pattern like "FREQ=WEEKLY;COUNT=10"
+    if let countRange = pattern.range(of: "COUNT=") {
+        let afterCount = pattern[countRange.upperBound...]
+        if let semicolonRange = afterCount.range(of: ";") {
+            let countString = String(afterCount[..<semicolonRange.lowerBound])
+            return Int(countString) ?? 1
+        } else {
+            // COUNT is the last parameter
+            let countString = String(afterCount)
+            return Int(countString) ?? 1
+        }
+    }
+    
+    // For indefinite recurrences, return a reasonable number for display
+    return 50
+}
+
+private func extractFrequency(from pattern: String) -> String {
+    if let range = pattern.range(of: "FREQ=") {
+        let afterFreq = pattern[range.upperBound...]
+        if let semicolonRange = afterFreq.range(of: ";") {
+            return String(afterFreq[..<semicolonRange.lowerBound])
+        } else {
+            return String(afterFreq)
+        }
+    }
+    return "DAILY" // Default fallback
+}
+
+private func extractInterval(from pattern: String) -> Int? {
+    if let range = pattern.range(of: "INTERVAL=") {
+        let afterInterval = pattern[range.upperBound...]
+        if let semicolonRange = afterInterval.range(of: ";") {
+            return Int(String(afterInterval[..<semicolonRange.lowerBound]))
+        } else {
+            return Int(String(afterInterval))
+        }
+    }
+    return nil
+}
+
+private func formatRecurrenceFromPattern(_ pattern: String?) -> String {
+    guard let pattern = pattern?.uppercased() else { return "Regularly" }
+    
+    let frequency = extractFrequency(from: pattern)
+    let interval = extractInterval(from: pattern) ?? 1
+    
+    switch frequency {
+    case "DAILY":
+        return interval == 1 ? "Daily" : "Every \(interval) days"
+    case "WEEKLY":
+        return interval == 1 ? "Weekly" : "Every \(interval) weeks"
+    case "MONTHLY":
+        return interval == 1 ? "Monthly" : "Every \(interval) months"
+    case "YEARLY":
+        return interval == 1 ? "Yearly" : "Every \(interval) years"
+    default:
+        return "Regularly"
+    }
+}
+
 extension DateFormatter {
     static let dayFormatter: DateFormatter = {
         let formatter = DateFormatter()
