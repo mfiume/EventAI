@@ -24,8 +24,6 @@ struct ContentView: View {
         NavigationView {
             VStack(spacing: 20) {
                 inputSection
-
-                Spacer()
             }
             .padding()
             .navigationTitle("Event AI")
