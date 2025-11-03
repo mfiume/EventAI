@@ -1,24 +1,17 @@
-// Configuration file template for EventAI
-// Copy this to Config.xcconfig and replace with your actual values
+// Configuration file template for EventAI 2.0
+// Copy this to Config.xcconfig if needed
 // Config.xcconfig is gitignored for security
 
-// RevenueCat Configuration
-REVENUECAT_API_KEY = appl_your_revenuecat_api_key_here
-
-// Backend Configuration  
-BACKEND_BASE_URL = https:/$()/eventai.leveluplife.app/api
-
-// API Authentication - CRITICAL: Keep these keys secure!
-// Production API Key (use this for App Store builds)
-API_KEY_PRODUCTION = eak_your_production_api_key_here
-
-// Staging API Key (use this for testing builds)
-API_KEY_STAGING = eak_your_staging_api_key_here
-
 // Environment Configuration
-// Set to "production" for App Store builds, "staging" for testing
-BUILD_ENVIRONMENT = staging
+BUILD_ENVIRONMENT = production
 
-// Usage: 
-// - For production: Set BUILD_ENVIRONMENT=production and use API_KEY_PRODUCTION
-// - For staging: Set BUILD_ENVIRONMENT=staging and use API_KEY_STAGING
+// Note: EventAI 2.0 has removed the backend service
+// Users now configure their own AI API keys (Anthropic or OpenAI) directly in the app
+// API keys are stored securely in iOS Keychain, not in config files
+//
+// To use EventAI:
+// 1. Launch the app
+// 2. Open Settings (gear icon)
+// 3. Choose AI Provider (Anthropic or OpenAI)
+// 4. Enter your API key
+// 5. Test connection and save

@@ -9,25 +9,15 @@
 	<key>NSCameraUsageDescription</key>
 	<string>EventAI needs access to your camera to take photos of schedules and documents that can be converted to calendar events.</string>
 	<key>CFBundleDisplayName</key>
-	<string>EventAI</string>
+	<string>Event AI</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.leveluplife.eventai</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1</string>
-	<key>API_BASE_URL</key>
-	<string>$(API_BASE_URL)</string>
-	<key>REVENUECAT_API_KEY</key>
-	<string>$(REVENUECAT_API_KEY)</string>
-	<key>BACKEND_BASE_URL</key>
-	<string>$(BACKEND_BASE_URL)</string>
-	<key>API_KEY</key>
-	<string>$(API_KEY)</string>
+	<string>2.0.0</string>
 	<key>BUILD_ENVIRONMENT</key>
 	<string>$(BUILD_ENVIRONMENT)</string>
-	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-5748015623915247~8933971607</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

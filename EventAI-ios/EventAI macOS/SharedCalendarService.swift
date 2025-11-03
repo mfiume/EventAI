@@ -7,41 +7,78 @@ public class SharedCalendarService: ObservableObject {
     
     private let eventStore = EKEventStore()
     @Published public var authorizationStatus: EKAuthorizationStatus = .notDetermined
+    @Published public var availableCalendars: [EKCalendar] = []
     
     public init() {
         updateAuthorizationStatus()
     }
     
     private func updateAuthorizationStatus() {
-        authorizationStatus = EKEventStore.authorizationStatus(for: .event)
+        if #available(macOS 14.0, *) {
+            authorizationStatus = EKEventStore.authorizationStatus(for: .event)
+        } else {
+            authorizationStatus = EKEventStore.authorizationStatus(for: .event)
+        }
+        print("📅 Calendar authorization status: \(authorizationStatus.rawValue)")
     }
     
     // MARK: - Authorization
     public func requestAccess() async -> Bool {
+        print("🔐 Requesting calendar access...")
+        
+        // Check current status first
+        await MainActor.run {
+            updateAuthorizationStatus()
+        }
+        
+        // If already authorized, return true
+        if hasCalendarAccess {
+            await MainActor.run {
+                loadAvailableCalendars()
+            }
+            return true
+        }
+        
         do {
+            var granted = false
+            
             // Use the modern API for macOS 14+
             if #available(macOS 14.0, *) {
-                let granted = try await eventStore.requestFullAccessToEvents()
-                await MainActor.run {
-                    updateAuthorizationStatus()
-                }
-                return granted
+                print("🔐 Using macOS 14+ requestFullAccessToEvents()")
+                granted = try await eventStore.requestFullAccessToEvents()
             } else {
-                // Fallback to older API
-                let granted = try await eventStore.requestAccess(to: .event)
-                await MainActor.run {
-                    updateAuthorizationStatus()
-                }
-                return granted
+                print("🔐 Using legacy requestAccess(to: .event)")
+                granted = try await eventStore.requestAccess(to: .event)
             }
+            
+            print("🔐 Permission result: \(granted)")
+            
+            await MainActor.run {
+                updateAuthorizationStatus()
+                if granted {
+                    loadAvailableCalendars()
+                }
+            }
+            
+            // Give the system a moment to update permissions
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            await MainActor.run {
+                updateAuthorizationStatus()
+            }
+            
+            return granted
         } catch {
-            print("Calendar access error: \(error)")
+            print("❌ Calendar access error: \(error)")
+            await MainActor.run {
+                updateAuthorizationStatus()
+            }
             return false
         }
     }
     
     // MARK: - Event Creation
-    public func addEventsToCalendar(_ events: [SharedAPIService.CalendarEvent]) async -> (success: Int, failed: Int, errors: [String]) {
+    public func addEventsToCalendar(_ events: [SharedAPIService.CalendarEvent], selectedCalendar: EKCalendar? = nil) async -> (success: Int, failed: Int, errors: [String]) {
         var successCount = 0
         var failedCount = 0
         var errors: [String] = []
@@ -97,8 +134,8 @@ public class SharedCalendarService: ObservableObject {
                     }
                 }
                 
-                // Use default calendar
-                ekEvent.calendar = eventStore.defaultCalendarForNewEvents
+                // Use selected calendar or default
+                ekEvent.calendar = selectedCalendar ?? eventStore.defaultCalendarForNewEvents
                 
                 // Save the event
                 try eventStore.save(ekEvent, span: .thisEvent)
@@ -142,5 +179,33 @@ public class SharedCalendarService: ObservableObject {
     
     public var canRequestAccess: Bool {
         return authorizationStatus == .notDetermined
+    }
+    
+    // MARK: - Calendar Management
+    private func loadAvailableCalendars() {
+        let allCalendars = eventStore.calendars(for: .event)
+        
+        // Filter to calendars that can be modified
+        availableCalendars = allCalendars.filter { calendar in
+            return calendar.allowsContentModifications && 
+                   !calendar.isImmutable && 
+                   (calendar.source.sourceType == .local || 
+                    calendar.source.sourceType == .calDAV || 
+                    calendar.source.sourceType == .exchange ||
+                    calendar.source.sourceType == .mobileMe)
+        }
+        
+        // If no calendars found, try a less restrictive filter
+        if availableCalendars.isEmpty {
+            availableCalendars = allCalendars.filter { calendar in
+                return calendar.allowsContentModifications
+            }
+        }
+        
+        print("📅 Loaded \(availableCalendars.count) available calendars")
+    }
+    
+    public func getDefaultCalendar() -> EKCalendar? {
+        return eventStore.defaultCalendarForNewEvents
     }
 }

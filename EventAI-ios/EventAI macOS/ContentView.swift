@@ -5,6 +5,7 @@ import EventKit
 struct ContentView: View {
     @EnvironmentObject var apiService: SharedAPIService
     @EnvironmentObject var calendarService: SharedCalendarService
+    @StateObject private var subscriptionService = RevenueCatService_macOS.shared
     
     @State private var inputText = ""
     @State private var isProcessing = false
@@ -20,6 +21,7 @@ struct ContentView: View {
     @State private var showingCalendarPicker = false
     @State private var showingTimezonePicker = false
     @State private var selectedEventIDs: Set<UUID> = []
+    @State private var showingPremiumUpgrade = false
     
     private let commonTimezones = [
         "America/New_York",
@@ -48,7 +50,7 @@ struct ContentView: View {
                     Spacer()
                     
                     // Status badge - smaller
-                    if usage.isPremium {
+                    if subscriptionService.isPremium || usage.isPremium {
                         HStack(spacing: 3) {
                             Image(systemName: "crown.fill")
                                 .font(.caption2)
@@ -74,8 +76,7 @@ struct ContentView: View {
                                 .cornerRadius(4)
                             
                             Button(action: {
-                                // Future subscription service integration
-                                print("Upgrade tapped - future subscription integration")
+                                showingPremiumUpgrade = true
                             }) {
                                 HStack(spacing: 3) {
                                     Image(systemName: "crown.fill")
@@ -273,22 +274,29 @@ struct ContentView: View {
                                 }
                             }
                             
-                            // Add to Calendar button (always show)
-                            HStack {
+                            // Export buttons
+                            HStack(spacing: 12) {
                                 Spacer()
                                 
-                                // Always show "Add X to Calendar" when events exist, handle permissions in the action
-                                Button("Add \(selectedEventIDs.count) to Calendar") {
+                                // Add to Calendar button - no permissions needed
+                                Button("Add \(selectedEventIDs.count) Event\(selectedEventIDs.count == 1 ? "" : "s") to Calendar") {
                                     Task {
-                                        if !calendarService.hasCalendarAccess {
-                                            await requestCalendarAccess()
-                                        } else {
-                                            await addSelectedEventsToCalendar()
-                                        }
+                                        await exportSelectedEventsAsICS()
                                     }
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .disabled(selectedEventIDs.count == 0)
+                                
+                                // Direct calendar integration (optional)
+                                if calendarService.hasCalendarAccess {
+                                    Button("Add Directly") {
+                                        Task {
+                                            await addSelectedEventsToCalendar()
+                                        }
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(selectedEventIDs.count == 0)
+                                }
                             }
                         }
                     }
@@ -385,11 +393,25 @@ struct ContentView: View {
         .sheet(isPresented: $showingTimezonePicker) {
             MacOSTimezonePickerView(selectedTimezone: $selectedTimezone)
         }
+        .sheet(isPresented: $showingPremiumUpgrade) {
+            PremiumUpgradeView()
+        }
     }
     
     // MARK: - Actions
     private func processText() async {
         guard !inputText.isEmpty else { return }
+        
+        // Check if user has reached their daily limit (for free users)
+        if let usage = usageInfo, 
+           !subscriptionService.isPremium && 
+           !usage.isPremium && 
+           usage.remaining <= 0 {
+            await MainActor.run {
+                showingPremiumUpgrade = true
+            }
+            return
+        }
         
         isProcessing = true
         showingResults = false
@@ -462,6 +484,133 @@ struct ContentView: View {
                 showingError = true
             }
         }
+    }
+    
+    private func exportSelectedEventsAsICS() async {
+        let selectedEvents = events.filter { selectedEventIDs.contains($0.id) }
+        let icsContent = generateICSContent(for: selectedEvents)
+        
+        await MainActor.run {
+            // Create temporary file
+            let tempDirectory = FileManager.default.temporaryDirectory
+            let icsFileName = "EventAI-Events-\(Int(Date().timeIntervalSince1970)).ics"
+            let icsURL = tempDirectory.appendingPathComponent(icsFileName)
+            
+            do {
+                try icsContent.write(to: icsURL, atomically: true, encoding: .utf8)
+                
+                // Open with default calendar app
+                NSWorkspace.shared.open(icsURL)
+                
+                print("✅ Opened \(selectedEvents.count) events with default calendar app")
+            } catch {
+                errorMessage = "Failed to create calendar file: \(error.localizedDescription)"
+                showingError = true
+            }
+        }
+    }
+    
+    private func generateICSContent(for events: [SharedAPIService.CalendarEvent]) -> String {
+        var icsLines: [String] = []
+        
+        // ICS Header
+        icsLines.append("BEGIN:VCALENDAR")
+        icsLines.append("VERSION:2.0")
+        icsLines.append("PRODID:-//EventAI//EventAI macOS//EN")
+        icsLines.append("CALSCALE:GREGORIAN")
+        icsLines.append("METHOD:PUBLISH")
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+        
+        let localDateFormatter = DateFormatter()
+        localDateFormatter.dateFormat = "yyyyMMdd'T'HHmmss"
+        
+        for event in events {
+            guard let startDate = event.formattedStartDate else { continue }
+            
+            icsLines.append("BEGIN:VEVENT")
+            icsLines.append("UID:\(event.id.uuidString)@eventai.app")
+            icsLines.append("DTSTAMP:\(dateFormatter.string(from: Date()))")
+            
+            // Handle all-day events
+            if event.isAllDay {
+                let allDayFormatter = DateFormatter()
+                allDayFormatter.dateFormat = "yyyyMMdd"
+                allDayFormatter.timeZone = TimeZone(identifier: selectedTimezone)
+                
+                icsLines.append("DTSTART;VALUE=DATE:\(allDayFormatter.string(from: startDate))")
+                
+                if let endDate = event.formattedEndDate {
+                    // For all-day events, end date should be the next day
+                    let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: endDate) ?? endDate
+                    icsLines.append("DTEND;VALUE=DATE:\(allDayFormatter.string(from: nextDay))")
+                }
+            } else {
+                // Regular timed events
+                if let timezone = TimeZone(identifier: selectedTimezone) {
+                    localDateFormatter.timeZone = timezone
+                    icsLines.append("DTSTART;TZID=\(selectedTimezone):\(localDateFormatter.string(from: startDate))")
+                    
+                    if let endDate = event.formattedEndDate {
+                        icsLines.append("DTEND;TZID=\(selectedTimezone):\(localDateFormatter.string(from: endDate))")
+                    } else {
+                        // Default to 1 hour if no end time
+                        let endDate = startDate.addingTimeInterval(3600)
+                        icsLines.append("DTEND;TZID=\(selectedTimezone):\(localDateFormatter.string(from: endDate))")
+                    }
+                }
+            }
+            
+            // Event details
+            icsLines.append("SUMMARY:\(escapeICSText(event.title))")
+            
+            if let notes = event.notes, !notes.isEmpty {
+                icsLines.append("DESCRIPTION:\(escapeICSText(notes))")
+            }
+            
+            if let location = event.location, !location.isEmpty {
+                icsLines.append("LOCATION:\(escapeICSText(location))")
+            }
+            
+            // Recurrence rules
+            if event.isRecurring, let pattern = event.recurrencePattern {
+                if let rrule = convertToRRULE(pattern) {
+                    icsLines.append("RRULE:\(rrule)")
+                }
+            }
+            
+            icsLines.append("END:VEVENT")
+        }
+        
+        icsLines.append("END:VCALENDAR")
+        
+        return icsLines.joined(separator: "\n")
+    }
+    
+    private func escapeICSText(_ text: String) -> String {
+        return text
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: ";", with: "\\;")
+            .replacingOccurrences(of: ",", with: "\\,")
+            .replacingOccurrences(of: "\n", with: "\\n")
+    }
+    
+    private func convertToRRULE(_ pattern: String) -> String? {
+        let uppercased = pattern.uppercased()
+        
+        if uppercased.contains("DAILY") {
+            return "FREQ=DAILY"
+        } else if uppercased.contains("WEEKLY") {
+            return "FREQ=WEEKLY"
+        } else if uppercased.contains("MONTHLY") {
+            return "FREQ=MONTHLY"
+        } else if uppercased.contains("YEARLY") {
+            return "FREQ=YEARLY"
+        }
+        
+        return nil
     }
     
     private func loadUsage() {

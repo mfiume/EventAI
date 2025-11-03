@@ -129,7 +129,7 @@ public class SharedAPIService: ObservableObject {
         public let resetTimezone: String?
         
         enum CodingKeys: String, CodingKey {
-            case allowed, count, limit, remaining
+            case allowed = "can_convert", count, limit, remaining
             case isPremium = "is_premium"
             case resetDate = "reset_date"
             case resetTime = "reset_time"
@@ -214,11 +214,16 @@ public class SharedAPIService: ObservableObject {
             throw APIError.unauthorized
         }
         
+        let deviceId = "macos-device-\(UUID().uuidString)"
+        print("🔍 Making usage API call with device ID: \(deviceId)")
+        
         let url = URL(string: "\(baseURL)/usage")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
-        request.setValue("macos-device-\(UUID().uuidString)", forHTTPHeaderField: "X-Device-ID")
+        request.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
+        
+        print("🔍 Usage API URL: \(url)")
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -226,13 +231,19 @@ public class SharedAPIService: ObservableObject {
             throw APIError.networkError
         }
         
+        print("🔍 Usage API response status: \(httpResponse.statusCode)")
+        
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
         } else if httpResponse.statusCode != 200 {
             throw APIError.serverError
         }
         
+        let responseString = String(data: data, encoding: .utf8) ?? "Invalid response"
+        print("🔍 Usage API raw response: \(responseString)")
+        
         let usageResponse = try JSONDecoder().decode(UsageResponse.self, from: data)
+        print("🔍 Usage API parsed response: count=\(usageResponse.count), limit=\(usageResponse.limit), remaining=\(usageResponse.remaining)")
         return usageResponse
     }
 }

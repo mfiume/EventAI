@@ -15,9 +15,6 @@
 		1A234567890A0012 /* CalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0011 /* CalendarService.swift */; };
 		1A234567890A0016 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0015 /* LocationService.swift */; };
 		1A234567890A001A /* TimezonePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0019 /* TimezonePickerView.swift */; };
-		1A234567890A001E /* RevenueCatConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A001D /* RevenueCatConfig.swift */; };
-		1A234567890A0020 /* RevenueCatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A001F /* RevenueCatService.swift */; };
-		1A234567890A0022 /* SubscriptionService_RevenueCat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A234567890A0021 /* SubscriptionService_RevenueCat.swift */; };
 		4E1D39342E4916E100638509 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 4E1D39372E4916E100638509 /* RevenueCat */; };
 		4E1D39352E4916E100638509 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4E1D39382E4916E100638509 /* RevenueCatUI */; };
 		4E1D393C2E4916FE00638509 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E1D393B2E4916FE00638509 /* StoreKit.framework */; };
@@ -55,9 +52,6 @@
 		1A234567890A0015 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		1A234567890A0019 /* TimezonePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimezonePickerView.swift; sourceTree = "<group>"; };
 		1A234567890A001B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		1A234567890A001D /* RevenueCatConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatConfig.swift; sourceTree = "<group>"; };
-		1A234567890A001F /* RevenueCatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatService.swift; sourceTree = "<group>"; };
-		1A234567890A0021 /* SubscriptionService_RevenueCat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService_RevenueCat.swift; sourceTree = "<group>"; };
 		1A234567890A0026 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		1A234567890A0027 /* EventAI.storekit */ = {isa = PBXFileReference; lastKnownFileType = text.storekit; path = EventAI.storekit; sourceTree = "<group>"; };
 		1A234567890AFFFD /* EventAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EventAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -130,8 +124,6 @@
 				1A234567890A0011 /* CalendarService.swift */,
 				1A234567890A0035 /* KeychainService.swift */,
 				1A234567890A0015 /* LocationService.swift */,
-				1A234567890A001F /* RevenueCatService.swift */,
-				1A234567890A0021 /* SubscriptionService_RevenueCat.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -156,7 +148,6 @@
 		1A234567890A0025 /* Config */ = {
 			isa = PBXGroup;
 			children = (
-				1A234567890A001D /* RevenueCatConfig.swift */,
 				1A234567890A0026 /* Config.xcconfig */,
 			);
 			path = Config;
@@ -396,10 +387,7 @@
 				1A234567890A0001 /* EventAIApp.swift in Sources */,
 				1A234567890A0034 /* KeychainService.swift in Sources */,
 				1A234567890A0016 /* LocationService.swift in Sources */,
-				1A234567890A001E /* RevenueCatConfig.swift in Sources */,
-				1A234567890A0020 /* RevenueCatService.swift in Sources */,
 				1A234567890A0036 /* SettingsView.swift in Sources */,
-				1A234567890A0022 /* SubscriptionService_RevenueCat.swift in Sources */,
 				1A234567890A001A /* TimezonePickerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

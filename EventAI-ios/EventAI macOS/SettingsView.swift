@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var apiService: SharedAPIService
+    @StateObject private var subscriptionService = RevenueCatService_macOS.shared
     @AppStorage("launchAtLogin") private var launchAtLogin = false
     @AppStorage("showMenuBarIcon") private var showMenuBarIcon = true
     @AppStorage("enableNotifications") private var enableNotifications = true
@@ -119,6 +120,111 @@ struct SettingsView: View {
                 Label("Calendar", systemImage: "calendar")
             }
             
+            // Premium & Subscription
+            VStack(alignment: .leading, spacing: 20) {
+                SettingsSection("Subscription Status") {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(subscriptionService.subscriptionStatus)
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(subscriptionService.isPremium ? .green : .primary)
+                                
+                                if subscriptionService.isPremium {
+                                    Image(systemName: "crown.fill")
+                                        .foregroundColor(.yellow)
+                                }
+                            }
+                            
+                            if let expiryDate = subscriptionService.expiryDate {
+                                Text("Expires: \(expiryDate, formatter: subscriptionDateFormatter)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Text(subscriptionService.isPremium ? "Unlimited daily conversions" : "3 daily conversions")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(spacing: 8) {
+                            if !subscriptionService.isPremium {
+                                Button("Upgrade to Premium") {
+                                    Task {
+                                        await subscriptionService.purchaseSubscription()
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(subscriptionService.isLoading)
+                                
+                                Button("Restore Purchases") {
+                                    Task {
+                                        await subscriptionService.restorePurchases()
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(subscriptionService.isLoading)
+                            } else {
+                                Button("Manage Subscription") {
+                                    subscriptionService.showCustomerCenter()
+                                }
+                                .buttonStyle(.bordered)
+                                
+                                Button("Sync with Other Devices") {
+                                    Task {
+                                        await subscriptionService.syncWithOtherPlatforms()
+                                    }
+                                }
+                                .buttonStyle(.borderless)
+                                .disabled(subscriptionService.isLoading)
+                            }
+                        }
+                    }
+                    
+                    if let error = subscriptionService.purchaseError {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(.top, 4)
+                    }
+                    
+                    if subscriptionService.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .padding(.top, 4)
+                    }
+                }
+                
+                SettingsSection("Cross-Platform Sync") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your subscription works on all your devices")
+                            .font(.subheadline)
+                        
+                        Text("Subscribe on iOS, unlock on macOS - or vice versa. Your premium status is automatically synced across all platforms where you're signed in with the same Apple ID.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            Image(systemName: "iphone")
+                            Image(systemName: "arrow.left.arrow.right")
+                            Image(systemName: "laptopcomputer")
+                        }
+                        .font(.title2)
+                        .foregroundColor(.blue)
+                        .padding(.top, 4)
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding()
+            .tabItem {
+                Label("Premium", systemImage: "crown")
+            }
+            
             // API Settings
             VStack(alignment: .leading, spacing: 20) {
                 SettingsSection("API Configuration") {
@@ -232,6 +338,13 @@ struct SettingsView: View {
         // This would need to be implemented with proper macOS launch services
         // For now, just store the preference
         print("Launch at login: \(enabled)")
+    }
+    
+    private var subscriptionDateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
     }
 }
 
