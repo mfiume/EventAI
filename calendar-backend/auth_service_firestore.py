@@ -101,7 +101,9 @@ def setup_initial_api_keys():
         {
             "key": "eak_bf8b7a059ab93f3156960babcd922c0cc8a9ab834948b4a800353c9d2242795c",
             "name": "Dev Production Key",
-            "permissions": ["usage", "convert", "subscription", "admin"]
+            "permissions": ["usage", "convert", "subscription", "admin"],
+            "free_daily_limit": 1000,
+            "premium_daily_limit": 2000
         },
         {
             "key": "eak_c47d0bde9529f7f254df4a68668c0f74402c89d7daf9c5ae4ed92b9296142b2a",
@@ -115,7 +117,8 @@ def setup_initial_api_keys():
             api_key = key_info["key"]
             # Check if key already exists
             key_ref = fs_service.client.collection("api_keys").document(api_key)
-            if not key_ref.get().exists:
+            key_doc = key_ref.get()
+            if not key_doc.exists:
                 # Create the API key
                 key_data = {
                     "key_id": api_key,
@@ -128,10 +131,33 @@ def setup_initial_api_keys():
                     "last_used": None,
                     "usage_count": 0
                 }
+                
+                # Add custom daily limits if specified
+                if "free_daily_limit" in key_info:
+                    key_data["free_daily_limit"] = key_info["free_daily_limit"]
+                if "premium_daily_limit" in key_info:
+                    key_data["premium_daily_limit"] = key_info["premium_daily_limit"]
                 key_ref.set(key_data)
                 print(f"🔑 Added {key_info['name']} to Firestore: {api_key[:12]}...")
             else:
-                print(f"🔑 {key_info['name']} already exists in Firestore")
+                # Update existing key with new custom limits if they're specified
+                existing_data = key_doc.to_dict()
+                update_needed = False
+                updates = {}
+                
+                if "free_daily_limit" in key_info and existing_data.get("free_daily_limit") != key_info["free_daily_limit"]:
+                    updates["free_daily_limit"] = key_info["free_daily_limit"]
+                    update_needed = True
+                    
+                if "premium_daily_limit" in key_info and existing_data.get("premium_daily_limit") != key_info["premium_daily_limit"]:
+                    updates["premium_daily_limit"] = key_info["premium_daily_limit"]
+                    update_needed = True
+                
+                if update_needed:
+                    key_ref.update(updates)
+                    print(f"🔑 Updated {key_info['name']} with custom limits: {updates}")
+                else:
+                    print(f"🔑 {key_info['name']} already exists in Firestore")
             
     except Exception as e:
         print(f"❌ Failed to setup initial API keys: {e}")

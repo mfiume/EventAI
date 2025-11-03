@@ -35,11 +35,12 @@
                     <h1 class="logo-text">EventAI</h1>
                 </div>
                 <nav class="nav">
-                    <div class="usage-indicator" id="usageIndicator" style="display: none;">
-                        <span class="usage-text">Daily conversions</span>
-                        <span class="usage-count" id="usageCount">Loading...</span>
-                        <button class="upgrade-btn" id="upgradeBtn">Upgrade</button>
-                    </div>
+                    <button class="settings-btn" id="settingsBtn" title="Settings">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v6m0-13a2 2 0 0 1 2 2m-2-2a2 2 0 0 0-2 2m2 10a2 2 0 0 1 2 2m-2-2a2 2 0 0 0-2 2m9-7h-6m6 0a2 2 0 0 1-2 2m2-2a2 2 0 0 0-2-2m-11 0H1m0 0a2 2 0 0 1 2-2m-2 2a2 2 0 0 0 2 2"></path>
+                        </svg>
+                    </button>
                     <a href="terms-of-use.html" class="nav-link">Terms</a>
                 </nav>
             </div>
@@ -186,69 +187,72 @@
         </div>
     </footer>
 
-    <!-- Premium Modal -->
-    <div class="modal-overlay" id="premiumModal" style="display: none;">
-        <div class="premium-modal">
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal" style="display: none;">
+        <div class="settings-modal">
             <div class="modal-header">
-                <button class="modal-close" id="closePremiumModal">
+                <h2 class="modal-title">Settings</h2>
+                <button class="modal-close" id="closeSettingsModal">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="m15 9-6 6"></path>
-                        <path d="m9 9 6 6"></path>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
             </div>
-            
+
             <div class="modal-content">
-                <div class="modal-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                        <path d="M8 14l2 2 4-4"></path>
-                    </svg>
+                <div class="settings-section">
+                    <h3 class="section-title">AI Provider</h3>
+                    <select id="aiProvider" class="settings-select">
+                        <option value="anthropic">Anthropic Claude</option>
+                        <option value="openai">OpenAI GPT</option>
+                    </select>
                 </div>
-                
-                <h2 class="modal-title">Upgrade to Premium</h2>
-                <p class="modal-subtitle">Get more conversions, remove ads, and unlock priority processing for your events.</p>
-                
-                <div class="upgrade-comparison" id="upgradeComparison" style="display: none;">
-                    <p class="comparison-text" id="comparisonText"></p>
+
+                <div class="settings-section">
+                    <h3 class="section-title">API Key</h3>
+                    <input
+                        type="password"
+                        id="apiKey"
+                        class="settings-input"
+                        placeholder="sk-ant-... or sk-..."
+                        autocomplete="off"
+                    />
+                    <button class="test-connection-btn" id="testConnectionBtn">Test Connection</button>
+                    <p class="settings-hint">Your API key is stored locally in your browser and never sent to our servers.</p>
+                    <div id="connectionStatus" class="connection-status" style="display: none;"></div>
                 </div>
-                
-                <div class="feature-list">
-                    <div class="feature-item">
-                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <path d="m9 11 3 3L22 4"></path>
-                        </svg>
-                        <span class="feature-text">More Conversions</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <path d="m9 11 3 3L22 4"></path>
-                        </svg>
-                        <span class="feature-text">Photo Support</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <path d="m9 11 3 3L22 4"></path>
-                        </svg>
-                        <span class="feature-text">Ad-Free</span>
+
+                <div class="settings-section">
+                    <h3 class="section-title">Model</h3>
+                    <select id="aiModel" class="settings-select">
+                        <!-- Options populated dynamically based on provider -->
+                    </select>
+                </div>
+
+                <div class="settings-section">
+                    <h3 class="section-title">API Key Setup</h3>
+                    <div class="api-key-help">
+                        <p><strong>Anthropic Claude:</strong></p>
+                        <ol>
+                            <li>Visit <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></li>
+                            <li>Create an account or sign in</li>
+                            <li>Generate an API key</li>
+                            <li>Paste it above</li>
+                        </ol>
+                        <p><strong>OpenAI:</strong></p>
+                        <ol>
+                            <li>Visit <a href="https://platform.openai.com" target="_blank">platform.openai.com</a></li>
+                            <li>Create an account or sign in</li>
+                            <li>Generate an API key</li>
+                            <li>Paste it above</li>
+                        </ol>
+                        <p class="cost-note">Typical cost: ~$0.001 per conversion</p>
                     </div>
                 </div>
-                
+
                 <div class="modal-actions">
-                    <button class="upgrade-premium-btn" id="upgradePremiumBtn">
-                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"></polygon>
-                        </svg>
-                        <span>Upgrade to Premium</span>
-                    </button>
-                    <p class="pricing-text" id="pricingText">Cancel anytime</p>
+                    <button class="save-settings-btn" id="saveSettingsBtn">Save Settings</button>
                 </div>
             </div>
         </div>

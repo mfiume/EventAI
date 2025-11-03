@@ -110,7 +110,38 @@ body {
     opacity: 0.6;
 }
 
-/* Navigation Link */
+/* Navigation Items */
+.nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.settings-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--ios-gray);
+    transition: all 0.2s ease;
+    padding: 8px;
+}
+
+.settings-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--ios-blue);
+}
+
+.settings-btn .icon {
+    width: 20px;
+    height: 20px;
+}
+
 .nav-link {
     font-size: 14px;
     color: var(--ios-blue);
@@ -600,6 +631,165 @@ body {
     font-size: 14px;
     color: var(--ios-secondary);
     margin: 0;
+}
+
+/* Settings Modal Specific Styles */
+.settings-modal {
+    background: var(--ios-white);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: slideUp 0.3s ease-out;
+}
+
+@media (min-width: 768px) {
+    .settings-modal {
+        border-radius: 16px;
+        max-width: 600px;
+        min-width: 500px;
+    }
+}
+
+.settings-section {
+    margin-bottom: 24px;
+}
+
+.section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ios-primary);
+    margin-bottom: 10px;
+}
+
+.settings-select,
+.settings-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--ios-separator);
+    border-radius: 10px;
+    font-size: 16px;
+    font-family: inherit;
+    background: var(--ios-white);
+    color: var(--ios-primary);
+    transition: all 0.2s ease;
+}
+
+.settings-select:focus,
+.settings-input:focus {
+    outline: none;
+    border-color: var(--ios-blue);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.settings-hint {
+    font-size: 12px;
+    color: var(--ios-secondary);
+    margin-top: 8px;
+    margin-bottom: 0;
+    line-height: 1.4;
+}
+
+.test-connection-btn {
+    margin-top: 12px;
+    padding: 10px 16px;
+    background: var(--ios-gray-bg);
+    color: var(--ios-blue);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.test-connection-btn:hover {
+    background: rgba(142, 142, 147, 0.15);
+}
+
+.connection-status {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.connection-status.success {
+    background: rgba(52, 199, 89, 0.1);
+    color: var(--ios-green);
+}
+
+.connection-status.error {
+    background: rgba(255, 59, 48, 0.1);
+    color: #FF3B30;
+}
+
+.connection-status.loading {
+    background: rgba(0, 122, 255, 0.1);
+    color: var(--ios-blue);
+}
+
+.api-key-help {
+    background: var(--ios-background);
+    padding: 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.api-key-help p {
+    margin: 8px 0;
+}
+
+.api-key-help strong {
+    color: var(--ios-primary);
+}
+
+.api-key-help ol {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.api-key-help li {
+    margin: 4px 0;
+}
+
+.api-key-help a {
+    color: var(--ios-blue);
+    text-decoration: none;
+}
+
+.api-key-help a:hover {
+    text-decoration: underline;
+}
+
+.cost-note {
+    color: var(--ios-green);
+    font-weight: 600;
+    margin-top: 12px;
+}
+
+.save-settings-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 16px 24px;
+    background: var(--ios-blue);
+    color: var(--ios-white);
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.save-settings-btn:hover {
+    opacity: 0.8;
 }
 
 /* Event Preview Specific Styles */
