@@ -96,20 +96,25 @@ struct ContentView: View {
             // Image picker section
             HStack {
                 if let image = selectedImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 60, height: 60)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            Button(action: { selectedImage = nil }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.white)
-                                    .background(Circle().fill(Color.black.opacity(0.6)))
-                            }
-                            .offset(x: 25, y: -25),
-                            alignment: .topTrailing
-                        )
+                    ZStack(alignment: .topTrailing) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 60, height: 60)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                        Button(action: { selectedImage = nil }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white)
+                                .background(
+                                    Circle()
+                                        .fill(Color.black.opacity(0.7))
+                                        .frame(width: 20, height: 20)
+                                )
+                        }
+                        .offset(x: 8, y: -8)
+                    }
                 }
 
                 Button(action: { showingImagePicker = true }) {
