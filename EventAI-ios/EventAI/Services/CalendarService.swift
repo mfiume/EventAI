@@ -104,8 +104,12 @@ class CalendarService: ObservableObject {
 
         // Handle recurrence
         if event.isRecurring, let recurrencePattern = event.recurrencePattern {
+            print("🔄 Event is recurring with pattern: \(recurrencePattern)")
             if let ekRecurrenceRule = parseRRULE(recurrencePattern) {
                 ekEvent.addRecurrenceRule(ekRecurrenceRule)
+                print("✅ Successfully added recurrence rule")
+            } else {
+                print("❌ Failed to parse recurrence pattern: \(recurrencePattern)")
             }
         }
 
@@ -426,15 +430,28 @@ class CalendarService: ObservableObject {
     }
     
     private func parseRRULE(_ rruleString: String) -> EKRecurrenceRule? {
+        let trimmedInput = rruleString.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+
+        // Try to parse as standard RRULE format first
+        if trimmedInput.contains("FREQ=") {
+            return parseStandardRRULE(trimmedInput)
+        }
+
+        // Fallback: Try to parse natural language patterns
+        print("⚠️ Attempting natural language fallback for: \(rruleString)")
+        return parseNaturalLanguageRecurrence(rruleString)
+    }
+
+    private func parseStandardRRULE(_ rruleString: String) -> EKRecurrenceRule? {
         let components = rruleString.components(separatedBy: ";")
         var frequency: EKRecurrenceFrequency?
         var interval = 1
         var daysOfWeek: [EKRecurrenceDayOfWeek] = []
         var end: EKRecurrenceEnd?
-        
+
         for component in components {
             let trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-            
+
             if trimmed.hasPrefix("FREQ=") {
                 let freqValue = String(trimmed.dropFirst(5))
                 switch freqValue {
@@ -468,12 +485,12 @@ class CalendarService: ObservableObject {
                 }
             }
         }
-        
+
         guard let freq = frequency else {
             print("❌ No valid frequency found in RRULE: \(rruleString)")
             return nil
         }
-        
+
         return EKRecurrenceRule(
             recurrenceWith: freq,
             interval: interval,
@@ -485,6 +502,61 @@ class CalendarService: ObservableObject {
             setPositions: nil,
             end: end
         )
+    }
+
+    private func parseNaturalLanguageRecurrence(_ pattern: String) -> EKRecurrenceRule? {
+        let lower = pattern.lowercased()
+
+        // Daily patterns
+        if lower.contains("daily") || lower.contains("every day") {
+            return EKRecurrenceRule(recurrenceWith: .daily, interval: 1, end: nil)
+        }
+
+        // Weekly patterns
+        if lower.contains("weekly") || lower.contains("every week") {
+            return EKRecurrenceRule(recurrenceWith: .weekly, interval: 1, end: nil)
+        }
+
+        // Specific day patterns
+        let dayMapping: [String: EKWeekday] = [
+            "monday": .monday, "mon": .monday,
+            "tuesday": .tuesday, "tue": .tuesday,
+            "wednesday": .wednesday, "wed": .wednesday,
+            "thursday": .thursday, "thu": .thursday,
+            "friday": .friday, "fri": .friday,
+            "saturday": .saturday, "sat": .saturday,
+            "sunday": .sunday, "sun": .sunday
+        ]
+
+        for (dayName, weekday) in dayMapping {
+            if lower.contains("every \(dayName)") {
+                let dayOfWeek = EKRecurrenceDayOfWeek(weekday)
+                return EKRecurrenceRule(
+                    recurrenceWith: .weekly,
+                    interval: 1,
+                    daysOfTheWeek: [dayOfWeek],
+                    daysOfTheMonth: nil,
+                    monthsOfTheYear: nil,
+                    weeksOfTheYear: nil,
+                    daysOfTheYear: nil,
+                    setPositions: nil,
+                    end: nil
+                )
+            }
+        }
+
+        // Monthly patterns
+        if lower.contains("monthly") || lower.contains("every month") {
+            return EKRecurrenceRule(recurrenceWith: .monthly, interval: 1, end: nil)
+        }
+
+        // Yearly patterns
+        if lower.contains("yearly") || lower.contains("every year") || lower.contains("annually") {
+            return EKRecurrenceRule(recurrenceWith: .yearly, interval: 1, end: nil)
+        }
+
+        print("❌ Could not parse recurrence pattern: \(pattern)")
+        return nil
     }
     
     private func parseByDay(_ byDayString: String) -> [EKRecurrenceDayOfWeek] {

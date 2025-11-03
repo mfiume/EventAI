@@ -58,7 +58,13 @@ class AnthropicService: AIServiceProtocol {
         Rules:
         - Use ISO 8601 format for dates (YYYY-MM-DDTHH:MM:SS)
         - If no time specified, infer reasonable times
-        - For recurring events, set is_recurring to true and provide recurrence_pattern
+        - For recurring events, set is_recurring to true and provide recurrence_pattern in RFC 5545 RRULE format
+        - RRULE format examples:
+          * "FREQ=DAILY" for daily recurrence
+          * "FREQ=WEEKLY;BYDAY=MO" for every Monday
+          * "FREQ=WEEKLY;BYDAY=MO,WE,FR" for Monday, Wednesday, Friday
+          * "FREQ=MONTHLY;BYMONTHDAY=1" for first of every month
+          * "FREQ=YEARLY" for yearly recurrence
         - Return empty array [] if no events found
 
         Text: \(text)
@@ -230,6 +236,18 @@ class OpenAIService: AIServiceProtocol {
           "location": null,
           "description": null
         }]
+
+        Rules:
+        - Use ISO 8601 format for dates (YYYY-MM-DDTHH:MM:SS)
+        - If no time specified, infer reasonable times
+        - For recurring events, set is_recurring to true and provide recurrence_pattern in RFC 5545 RRULE format
+        - RRULE format examples:
+          * "FREQ=DAILY" for daily recurrence
+          * "FREQ=WEEKLY;BYDAY=MO" for every Monday
+          * "FREQ=WEEKLY;BYDAY=MO,WE,FR" for Monday, Wednesday, Friday
+          * "FREQ=MONTHLY;BYMONTHDAY=1" for first of every month
+          * "FREQ=YEARLY" for yearly recurrence
+        - Return empty array [] if no events found
 
         Text: \(text)
         """
