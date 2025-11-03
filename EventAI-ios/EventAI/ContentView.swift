@@ -398,32 +398,61 @@ struct EventRow: View {
                 .foregroundColor(isSelected ? .blue : .gray)
                 .font(.title3)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(event.title)
                     .font(.headline)
+                    .foregroundColor(.primary)
 
                 if let startDate = event.formattedStartDate {
-                    Text(formatDate(startDate))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(formatDate(startDate))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 if let location = event.location {
-                    Label(location, systemImage: "location")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Image(systemName: "location.fill")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                        Text(location)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 if event.isRecurring, let pattern = event.recurrencePattern {
-                    Label(pattern, systemImage: "repeat")
+                    HStack(spacing: 4) {
+                        Image(systemName: "repeat")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        Text(humanReadableRecurrence(pattern))
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                            .fontWeight(.medium)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(6)
+                }
+
+                if let description = event.description, !description.isEmpty {
+                    Text(description)
                         .font(.caption)
-                        .foregroundColor(.blue)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .padding(.top, 2)
                 }
             }
 
             Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
     private func formatDate(_ date: Date) -> String {
@@ -431,6 +460,121 @@ struct EventRow: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+
+    private func humanReadableRecurrence(_ pattern: String) -> String {
+        let upperPattern = pattern.uppercased()
+
+        // Parse RRULE format
+        if upperPattern.contains("FREQ=") {
+            var result = ""
+            var frequency = ""
+            var days: [String] = []
+            var interval = 1
+
+            let components = upperPattern.components(separatedBy: ";")
+
+            for component in components {
+                let trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if trimmed.hasPrefix("FREQ=") {
+                    let freqValue = String(trimmed.dropFirst(5))
+                    switch freqValue {
+                    case "DAILY":
+                        frequency = "Daily"
+                    case "WEEKLY":
+                        frequency = "Weekly"
+                    case "MONTHLY":
+                        frequency = "Monthly"
+                    case "YEARLY":
+                        frequency = "Yearly"
+                    default:
+                        frequency = freqValue.capitalized
+                    }
+                } else if trimmed.hasPrefix("INTERVAL=") {
+                    if let intervalValue = Int(String(trimmed.dropFirst(9))) {
+                        interval = intervalValue
+                    }
+                } else if trimmed.hasPrefix("BYDAY=") {
+                    let dayString = String(trimmed.dropFirst(6))
+                    let dayComponents = dayString.components(separatedBy: ",")
+
+                    let dayMap: [String: String] = [
+                        "MO": "Monday", "TU": "Tuesday", "WE": "Wednesday",
+                        "TH": "Thursday", "FR": "Friday", "SA": "Saturday", "SU": "Sunday"
+                    ]
+
+                    days = dayComponents.compactMap { dayMap[$0.trimmingCharacters(in: .whitespacesAndNewlines)] }
+                }
+            }
+
+            // Build human-readable string
+            if interval > 1 {
+                result = "Every \(interval) "
+                switch frequency.lowercased() {
+                case "daily":
+                    result += "days"
+                case "weekly":
+                    result += "weeks"
+                case "monthly":
+                    result += "months"
+                case "yearly":
+                    result += "years"
+                default:
+                    result += frequency.lowercased()
+                }
+            } else {
+                result = frequency
+            }
+
+            if !days.isEmpty {
+                if days.count == 1 {
+                    result = "Every \(days[0])"
+                } else if days.count == 7 {
+                    result = "Every day"
+                } else if days.count == 5 && !days.contains("Saturday") && !days.contains("Sunday") {
+                    result = "Weekdays"
+                } else if days.count == 2 && days.contains("Saturday") && days.contains("Sunday") {
+                    result = "Weekends"
+                } else {
+                    let lastDay = days.removeLast()
+                    result = "Every \(days.joined(separator: ", ")) & \(lastDay)"
+                }
+            }
+
+            return result
+        }
+
+        // Fallback for natural language patterns
+        let lower = pattern.lowercased()
+
+        if lower.contains("daily") || lower.contains("every day") {
+            return "Daily"
+        } else if lower.contains("weekly") || lower.contains("every week") {
+            return "Weekly"
+        } else if lower.contains("monthly") || lower.contains("every month") {
+            return "Monthly"
+        } else if lower.contains("yearly") || lower.contains("annually") {
+            return "Yearly"
+        } else if lower.contains("weekday") {
+            return "Weekdays"
+        } else if lower.contains("weekend") {
+            return "Weekends"
+        }
+
+        // Check for specific day mentions
+        let days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        for day in days {
+            if lower.contains("every \(day)") {
+                return "Every \(day.capitalized)"
+            }
+        }
+
+        // Fallback: clean up and capitalize
+        return pattern.replacingOccurrences(of: "FREQ=", with: "")
+                     .replacingOccurrences(of: "BYDAY=", with: "on ")
+                     .replacingOccurrences(of: ";", with: " ")
+                     .capitalized
     }
 }
 
