@@ -56,7 +56,112 @@ class CalendarService: ObservableObject {
     func getDefaultCalendar() -> EKCalendar? {
         return eventStore.defaultCalendarForNewEvents
     }
-    
+
+    // Helper method to add a single CalendarEvent (from AIConfiguration.swift)
+    func addEventToCalendar(event: CalendarEvent, timezone: TimeZone, selectedCalendar: EKCalendar? = nil) async throws {
+        let targetCalendar = selectedCalendar ?? eventStore.defaultCalendarForNewEvents
+
+        guard let calendar = targetCalendar else {
+            throw NSError(domain: "CalendarService", code: -1, userInfo: [NSLocalizedDescriptionKey: "No target calendar available"])
+        }
+
+        let ekEvent = EKEvent(eventStore: eventStore)
+        ekEvent.title = event.title
+        ekEvent.notes = event.description
+        ekEvent.calendar = calendar
+        ekEvent.timeZone = timezone
+
+        // Parse start date with multiple formats
+        print("🔍 Attempting to parse start date: \(event.startDate)")
+
+        if let startDate = parseFlexibleDate(event.startDate, timezone: timezone) {
+            ekEvent.startDate = startDate
+            print("✅ Parsed start date: \(startDate)")
+        } else {
+            print("❌ Failed to parse start date: \(event.startDate)")
+            throw NSError(domain: "CalendarService", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid start date format: \(event.startDate)"])
+        }
+
+        // Parse end date with multiple formats
+        if let endDateString = event.endDate {
+            if let endDate = parseFlexibleDate(endDateString, timezone: timezone) {
+                ekEvent.endDate = endDate
+                print("✅ Parsed end date: \(endDate)")
+            } else {
+                print("⚠️ Failed to parse end date, using 1 hour after start")
+                ekEvent.endDate = ekEvent.startDate.addingTimeInterval(3600)
+            }
+        } else {
+            // Default to 1 hour after start if no end date
+            ekEvent.endDate = ekEvent.startDate.addingTimeInterval(3600)
+        }
+
+        if let location = event.location {
+            ekEvent.location = location
+        }
+
+        ekEvent.isAllDay = event.isAllDay
+
+        // Handle recurrence
+        if event.isRecurring, let recurrencePattern = event.recurrencePattern {
+            if let ekRecurrenceRule = parseRRULE(recurrencePattern) {
+                ekEvent.addRecurrenceRule(ekRecurrenceRule)
+            }
+        }
+
+        // Save the event
+        let span: EKSpan = event.isRecurring ? .futureEvents : .thisEvent
+        try eventStore.save(ekEvent, span: span)
+    }
+
+    // Flexible date parser that tries multiple formats
+    private func parseFlexibleDate(_ dateString: String, timezone: TimeZone) -> Date? {
+        // Try ISO8601 first (with various options)
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.timeZone = timezone
+
+        // Try with fractional seconds
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = isoFormatter.date(from: dateString) {
+            return date
+        }
+
+        // Try without fractional seconds
+        isoFormatter.formatOptions = [.withInternetDateTime]
+        if let date = isoFormatter.date(from: dateString) {
+            return date
+        }
+
+        // Try with just date and time
+        isoFormatter.formatOptions = [.withFullDate, .withFullTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        if let date = isoFormatter.date(from: dateString) {
+            return date
+        }
+
+        // Try common date formats
+        let formatters: [(String, TimeZone?)] = [
+            ("yyyy-MM-dd'T'HH:mm:ss.SSSZ", nil),      // ISO8601 with milliseconds and timezone
+            ("yyyy-MM-dd'T'HH:mm:ssZ", nil),          // ISO8601 with timezone
+            ("yyyy-MM-dd'T'HH:mm:ss", timezone),      // ISO8601 without timezone
+            ("yyyy-MM-dd HH:mm:ss", timezone),        // Space separator
+            ("yyyy-MM-dd'T'HH:mm", timezone),         // Without seconds
+            ("yyyy-MM-dd", timezone),                 // Date only
+        ]
+
+        for (format, tz) in formatters {
+            let formatter = DateFormatter()
+            formatter.dateFormat = format
+            formatter.timeZone = tz ?? TimeZone(identifier: "UTC")
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+        }
+
+        return nil
+    }
+
     func addEventsToCalendar(icsContent: String, selectedCalendar: EKCalendar? = nil, userTimezone: TimeZone = TimeZone.current, completion: @escaping (Bool, Error?) -> Void) {
         let events = parseICSContent(icsContent, userTimezone: userTimezone)
         let targetCalendar = selectedCalendar ?? eventStore.defaultCalendarForNewEvents
